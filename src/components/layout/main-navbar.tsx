@@ -1,3 +1,4 @@
+// File: src/components/layout/main-navbar.tsx
 "use client";
 
 import Link from "next/link";
@@ -19,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CartSheet } from "@/components/layout/cart-sheet";
 import { useState } from "react";
-import Image from "next/image"; 
+import Image from "next/image";
 
 export function MainNavbar() {
   const { user, userData, loading } = useAuth();
@@ -34,7 +35,7 @@ export function MainNavbar() {
   };
 
   const getInitials = (name: string) => name?.substring(0, 2).toUpperCase() || "U";
-
+  
   // Cek akses admin
   const hasAdminAccess = userData?.role && ['admin', 'super_admin', 'unit_admin'].includes(userData.role);
 
@@ -110,8 +111,16 @@ export function MainNavbar() {
                     </span>
                   </div>
                 </DropdownMenuLabel>
+                
                 <DropdownMenuSeparator />
                 
+                {/* [BARU] Menu Khusus Pengguna Biasa (Customer) */}
+                {userData?.role === 'customer' && (
+                  <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4 text-zinc-500" /> Profil Saya
+                  </DropdownMenuItem>
+                )}
+
                 {/* Menu Member */}
                 {userData?.role === 'member' && (
                   <>
@@ -130,11 +139,13 @@ export function MainNavbar() {
                     <LayoutDashboard className="mr-2 h-4 w-4 text-zinc-500" /> Dashboard Admin
                   </DropdownMenuItem>
                 )}
-
+                
                 <DropdownMenuSeparator />
+                
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Keluar
                 </DropdownMenuItem>
+                
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

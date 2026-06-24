@@ -1,3 +1,4 @@
+// File: src/app/(auth)/complete-profile/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -17,17 +18,21 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2, Building2, User, ArrowRight, ArrowLeft } from "lucide-react";
 import { Cooperative } from "@/types/cooperative";
 
 function CompleteProfileForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  // State untuk alur pendaftaran 2 tahap
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedRole, setSelectedRole] = useState<'member' | 'customer'>('customer');
+
   const [loading, setLoading] = useState(false);
   const [cooperatives, setCooperatives] = useState<Cooperative[]>([]);
   const [loadingCoops, setLoadingCoops] = useState(true);
-  
+
   const [formData, setFormData] = useState({
     uid: searchParams.get("uid") || "",
     email: searchParams.get("email") || "",
@@ -56,6 +61,7 @@ function CompleteProfileForm() {
         setLoadingCoops(false);
       }
     };
+    
     fetchCoops();
   }, [formData.uid, router]);
 
@@ -72,8 +78,11 @@ function CompleteProfileForm() {
     setLoading(true);
 
     try {
-      if (formData.nik.length < 16) throw new Error("NIK harus 16 digit");
-      if (!formData.coopId) throw new Error("Silakan pilih Unit Koperasi tujuan");
+      // Validasi khusus untuk anggota koperasi
+      if (selectedRole === 'member') {
+        if (formData.nik.length < 16) throw new Error("NIK harus 16 digit");
+        if (!formData.coopId) throw new Error("Silakan pilih Unit Koperasi tujuan");
+      }
 
       const selectedCoop = cooperatives.find(c => c.id === formData.coopId);
 
@@ -81,18 +90,24 @@ function CompleteProfileForm() {
         uid: formData.uid,
         email: formData.email,
         fullName: formData.fullName,
-        role: "member",
+        role: selectedRole,
         phone: formData.phone,
         address: formData.address,
-        nik: formData.nik,
-        status: "pending",
-        coopId: formData.coopId,
-        coopName: selectedCoop?.name || "Unknown Coop",
+        nik: selectedRole === 'member' ? formData.nik : "",
+        status: selectedRole === 'member' ? "pending" : "active",
+        coopId: selectedRole === 'member' ? formData.coopId : "",
+        coopName: selectedRole === 'member' ? (selectedCoop?.name || "") : "",
       });
 
       toast.success("Profil berhasil disimpan!");
-      router.push("/pending");
       
+      // Arahkan ke halaman yang sesuai dengan role
+      if (selectedRole === 'member') {
+        router.push("/pending");
+      } else {
+        router.push("/");
+      }
+
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Gagal menyimpan data");
@@ -101,19 +116,75 @@ function CompleteProfileForm() {
     }
   };
 
+  // TAMPILAN TAHAP 1: PEMILIHAN PERAN (ROLE)
+  if (step === 1) {
+    return (
+      <Card className="w-full max-w-lg shadow-xl border-blue-100 mt-8 mx-auto">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold text-blue-700">Pilih Jenis Akun</CardTitle>
+          <CardDescription>
+            Halo <b>{formData.fullName}</b>, bagaimana Anda ingin menggunakan layanan ini?
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <button 
+            onClick={() => { setSelectedRole('customer'); setStep(2); }}
+            className="w-full flex items-center justify-between p-4 border rounded-xl hover:bg-zinc-50 hover:border-blue-300 transition-all text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-zinc-100 rounded-full text-zinc-600">
+                <User className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-zinc-900">Pengguna Biasa (Public)</h3>
+                <p className="text-sm text-zinc-500">Berbelanja di marketplace tanpa mendaftar keanggotaan koperasi.</p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-zinc-400" />
+          </button>
+
+          <button 
+            onClick={() => { setSelectedRole('member'); setStep(2); }}
+            className="w-full flex items-center justify-between p-4 border rounded-xl hover:bg-blue-50 hover:border-blue-400 transition-all text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 rounded-full text-blue-600">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-zinc-900">Anggota Koperasi</h3>
+                <p className="text-sm text-zinc-500">Mendaftar keanggotaan untuk akses fitur penuh seperti pinjaman dan SHU.</p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-zinc-400" />
+          </button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // TAMPILAN TAHAP 2: PENGISIAN FORMULIR
   return (
     <Card className="w-full max-w-lg shadow-xl border-blue-100 mt-8 mx-auto">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold text-blue-700">Lengkapi Profil Koperasi</CardTitle>
+      <CardHeader className="space-y-1">
+        <div className="flex items-center mb-2">
+          <button 
+            onClick={() => setStep(1)} 
+            className="text-zinc-500 hover:text-zinc-900 flex items-center text-sm font-medium transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" /> Ganti Tipe Akun
+          </button>
+        </div>
+        <CardTitle className="text-2xl font-bold text-blue-700">Lengkapi Data Diri</CardTitle>
         <CardDescription>
-          Anda masuk dengan Google <b>{formData.email}</b>. Silakan lengkapi data keanggotaan Anda.
+          Sebagai <b>{selectedRole === 'member' ? "Anggota Koperasi" : "Pengguna Biasa"}</b>, silakan lengkapi sisa informasi Anda.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           
           <div className="space-y-2">
-            <Label htmlFor="fullName">Nama Lengkap Sesuai KTP</Label>
+            <Label htmlFor="fullName">Nama Lengkap Sesuai KTP <span className="text-red-500">*</span></Label>
             <Input
               id="fullName"
               name="fullName"
@@ -124,19 +195,23 @@ function CompleteProfileForm() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nik">NIK (16 Digit) <span className="text-red-500">*</span></Label>
-              <Input
-                id="nik"
-                name="nik"
-                required
-                placeholder="3372..."
-                maxLength={16}
-                value={formData.nik}
-                onChange={(e) => setFormData({...formData, nik: e.target.value.replace(/\D/g, '')})}
-              />
-            </div>
-            <div className="space-y-2">
+            {/* Input NIK hanya muncul untuk Anggota Koperasi */}
+            {selectedRole === 'member' && (
+              <div className="space-y-2">
+                <Label htmlFor="nik">NIK (16 Digit) <span className="text-red-500">*</span></Label>
+                <Input
+                  id="nik"
+                  name="nik"
+                  required={selectedRole === 'member'}
+                  placeholder="3372..."
+                  maxLength={16}
+                  value={formData.nik}
+                  onChange={(e) => setFormData({...formData, nik: e.target.value.replace(/\D/g, '')})}
+                />
+              </div>
+            )}
+            
+            <div className={`space-y-2 ${selectedRole === 'customer' ? 'md:col-span-2' : ''}`}>
               <Label htmlFor="phone">No. WhatsApp <span className="text-red-500">*</span></Label>
               <Input
                 id="phone"
@@ -151,7 +226,7 @@ function CompleteProfileForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Alamat Domisili <span className="text-red-500">*</span></Label>
+            <Label htmlFor="address">Alamat Pengiriman / Domisili <span className="text-red-500">*</span></Label>
             <Textarea
               id="address"
               name="address"
@@ -162,30 +237,33 @@ function CompleteProfileForm() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="coopId">Pilih Unit Koperasi <span className="text-red-500">*</span></Label>
-            <Select onValueChange={handleCoopChange} disabled={loadingCoops}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={loadingCoops ? "Memuat data..." : "Pilih Koperasi Terdekat"} />
-              </SelectTrigger>
-              <SelectContent>
-                {cooperatives.map((coop) => (
-                  <SelectItem key={coop.id} value={coop.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-zinc-500" />
-                      <span>{coop.name}</span>
-                      {coop.city && <span className="text-xs text-zinc-400">({coop.city})</span>}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Pemilihan Unit Koperasi hanya muncul untuk Anggota Koperasi */}
+          {selectedRole === 'member' && (
+            <div className="space-y-2">
+              <Label htmlFor="coopId">Pilih Unit Koperasi <span className="text-red-500">*</span></Label>
+              <Select onValueChange={handleCoopChange} disabled={loadingCoops}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={loadingCoops ? "Memuat data..." : "Pilih Koperasi Terdekat"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {cooperatives.map((coop) => (
+                    <SelectItem key={coop.id} value={coop.id}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-zinc-500" />
+                        <span>{coop.name}</span>
+                        {coop.city && <span className="text-xs text-zinc-400">({coop.city})</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold mt-4"
-            disabled={loading || loadingCoops}
+            disabled={loading || (selectedRole === 'member' && loadingCoops)}
           >
             {loading ? (
               <>

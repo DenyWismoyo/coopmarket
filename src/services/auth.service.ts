@@ -25,18 +25,19 @@ import {
 import { UserProfile, UserRole, UserStatus } from "@/types/user";
 
 // Interface lengkap untuk data registrasi
+// File: services/auth.service.ts
 export interface RegisterData {
   email: string;
-  password?: string; // Dibuat opsional untuk kebutuhan Google Sign-In
+  password?: string; 
   fullName: string;
   role: UserRole;
   phone: string;
   address: string;
-  nik: string;
+  nik?: string;      // Ubah menjadi opsional
   status: UserStatus;
-  coopId: string;
-  coopName?: string;
-  uid?: string; // Tambahan untuk referensi UID dari Auth
+  coopId?: string;   // Ubah menjadi opsional
+  coopName?: string; // Ubah menjadi opsional
+  uid?: string; 
 }
 
 export const authService = {
