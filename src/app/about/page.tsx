@@ -29,7 +29,7 @@ export default function AboutPage() {
         
         <div className="container px-4 mx-auto relative z-10 text-center">
           <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/20 text-xs font-semibold uppercase tracking-widest mb-6 backdrop-blur-sm">
-            Revolusi Koperasi Indonesia
+            Revolusi koperasi / komunitas industri Kreatif Indonesia
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight max-w-4xl mx-auto">
             Transformasi Digital untuk <br />
@@ -54,7 +54,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-xl font-bold text-zinc-900 mb-3">Konektivitas Tanpa Batas</h3>
               <p className="text-zinc-600 leading-relaxed text-sm">
-                Menghubungkan unit koperasi dari Sabang sampai Merauke dalam satu jaringan terintegrasi, memungkinkan kolaborasi dan pertukaran nilai ekonomi yang lebih luas.
+                Menghubungkan unit koperasi / komunitas dari Sabang sampai Merauke dalam satu jaringan terintegrasi, memungkinkan kolaborasi dan pertukaran nilai ekonomi yang lebih luas.
               </p>
             </div>
 
@@ -65,7 +65,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-xl font-bold text-zinc-900 mb-3">Akelarasi Digital</h3>
               <p className="text-zinc-600 leading-relaxed text-sm">
-                Memberdayakan koperasi dengan alat manajemen modern, sistem kasir pintar (POS), dan analitik data untuk pengambilan keputusan yang lebih cerdas dan cepat.
+                Memberdayakan koperasi / komunitas dengan alat manajemen modern, sistem kasir pintar (POS), dan analitik data untuk pengambilan keputusan yang lebih cerdas dan cepat.
               </p>
             </div>
 
@@ -94,7 +94,7 @@ export default function AboutPage() {
                 <span className="text-red-600">Pertumbuhan Bersama</span>
               </h2>
               <p className="text-zinc-500 text-lg">
-                Kami menghadirkan solusi end-to-end yang mengubah cara koperasi beroperasi, melayani anggota, dan berinteraksi dengan pasar.
+                Kami menghadirkan solusi end-to-end yang mengubah cara koperasi / komunitas beroperasi, melayani anggota, dan berinteraksi dengan pasar.
               </p>
 
               <div className="space-y-6">
@@ -105,7 +105,7 @@ export default function AboutPage() {
                   <div>
                     <h4 className="text-lg font-bold text-zinc-900">Marketplace Terkurasi</h4>
                     <p className="text-zinc-500 text-sm mt-1">
-                      Platform jual beli khusus yang mengangkat produk-produk unggulan anggota koperasi ke panggung yang lebih besar dengan manajemen stok terpusat.
+                      Platform jual beli khusus yang mengangkat produk-produk unggulan anggota koperasi / komunitas ke panggung yang lebih besar dengan manajemen stok terpusat.
                     </p>
                   </div>
                 </div>
@@ -129,7 +129,7 @@ export default function AboutPage() {
                   <div>
                     <h4 className="text-lg font-bold text-zinc-900">Aksesibilitas Mobile</h4>
                     <p className="text-zinc-500 text-sm mt-1">
-                      Pengalaman pengguna yang dioptimalkan untuk perangkat mobile, memastikan setiap anggota dapat mengakses layanan koperasi kapan saja, di mana saja.
+                      Pengalaman pengguna yang dioptimalkan untuk perangkat mobile, memastikan setiap anggota dapat mengakses layanan koperasi / komunitas kapan saja, di mana saja.
                     </p>
                   </div>
                 </div>
@@ -172,7 +172,7 @@ export default function AboutPage() {
             <div className="p-6 rounded-2xl bg-zinc-50 border border-zinc-100">
               <span className="text-5xl font-black text-zinc-200 block mb-4">02</span>
               <h4 className="text-lg font-bold text-zinc-900 mb-2">Verifikasi Unit</h4>
-              <p className="text-zinc-500 text-sm">Kunjungi unit koperasi pilihan untuk validasi data dan penyetoran simpanan pokok perdana.</p>
+              <p className="text-zinc-500 text-sm">Kunjungi unit koperasi / komunitas pilihan untuk validasi data dan penyetoran simpanan pokok perdana.</p>
             </div>
             <div className="p-6 rounded-2xl bg-zinc-50 border border-zinc-100">
               <span className="text-5xl font-black text-zinc-200 block mb-4">03</span>
@@ -198,14 +198,14 @@ export default function AboutPage() {
                 <Image src="/icon.png" width={40} height={40} alt="Logo" className="brightness-0 invert" />
                 <div className="text-left">
                   <span className="block font-bold text-white text-lg leading-none">CoopConnect</span>
-                  <span className="text-[10px] text-zinc-400 tracking-wider uppercase">Platform Koperasi Digital</span>
+                  
                 </div>
             </div>
             <p className="text-zinc-500 text-sm max-w-md mx-auto">
               Membangun ekonomi negeri melalui sinergi teknologi dan semangat gotong royong.
             </p>
             <div className="text-zinc-600 text-xs mt-4">
-              &copy; {new Date().getFullYear()} Koperasi Merah Putih. Hak Cipta Dilindungi.
+              &copy; {new Date().getFullYear()} COOP Conect. Hak Cipta Dilindungi.
             </div>
         </div>
       </footer>

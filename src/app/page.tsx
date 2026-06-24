@@ -28,7 +28,7 @@ export default function LandingPage() {
             <div className="flex-1 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/30 border border-red-400/30 text-red-50 text-xs font-semibold uppercase tracking-wider mb-6 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                Revolusi Koperasi Indonesia
+                Revolusi koperasi / komunitas industri Kreatif Indonesia
               </div>
               
               <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-100">
