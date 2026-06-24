@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/components/auth/auth-provider";
 import { productService } from "@/services/product.service";
 import { orderService } from "@/services/order.service";
@@ -20,17 +21,16 @@ import {
   Package,
   RefreshCw,
   ChevronUp,
+  QrCode
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ReceiptDialog } from "@/components/modules/orders/receipt-dialog";
-// Import tipe OrderItem agar mapping data aman
 import { OrderItem } from "@/types/order"; 
 import { Card, CardContent } from "@/components/ui/card";
 
-// Interface item di keranjang
 export interface POSCartItem extends Product {
   cartId: string;
   qty: number;
@@ -61,6 +61,9 @@ export default function MemberPOSPage() {
   const [cashAmount, setCashAmount] = useState("");
   const [processing, setProcessing] = useState(false);
   const [lastOrder, setLastOrder] = useState<any>(null);
+  
+  // Payment Type State [BARU]
+  const [paymentType, setPaymentType] = useState<'cash' | 'qris'>('cash');
 
   // Variant Selection State
   const [selectedProductForVariant, setSelectedProductForVariant] = useState<Product | null>(null);
@@ -71,7 +74,6 @@ export default function MemberPOSPage() {
     setLoading(true);
     try {
       const data = await productService.getSellerProducts(user.uid);
-      // Filter hanya produk aktif
       const activeData = data.filter(p => p.status === 'active');
       
       setProducts(activeData);
@@ -92,18 +94,15 @@ export default function MemberPOSPage() {
   // 2. Filter Produk
   useEffect(() => {
     let result = products;
-
     if (search) {
         const lower = search.toLowerCase();
         result = result.filter(p => 
             p.name.toLowerCase().includes(lower)
         );
     }
-
     if (selectedCategory !== "Semua") {
         result = result.filter(p => p.category === selectedCategory);
     }
-
     setFilteredProducts(result);
   }, [search, selectedCategory, products]);
 
@@ -123,6 +122,7 @@ export default function MemberPOSPage() {
       const existing = prev.find(p => p.cartId === uniqueCartId);
       
       const currentStock = variant ? variant.stock : product.stock;
+
       if (existing && existing.qty >= currentStock) {
           toast.error("Stok tidak mencukupi");
           return prev;
@@ -144,7 +144,7 @@ export default function MemberPOSPage() {
           qty: 1, 
           selectedVariant: variant,
           price: price 
-      };
+       };
       
       return [...prev, newItem];
     });
@@ -178,14 +178,15 @@ export default function MemberPOSPage() {
   // 4. Checkout Logic
   const handleCheckout = async () => {
     if (!user || !userData) return;
-    if (parseInt(cashAmount) < totalAmount) {
+
+    if (paymentType === 'cash' && parseInt(cashAmount) < totalAmount) {
       toast.error("Uang tunai kurang");
       return;
     }
 
     setProcessing(true);
+
     try {
-      // [FIX] Mapping data ke struktur OrderItem yang benar
       const orderItems: OrderItem[] = cart.map(item => ({
         productId: item.id,
         productName: item.name,
@@ -193,7 +194,6 @@ export default function MemberPOSPage() {
         quantity: item.qty,
         image: item.images?.[0] || "",
         sellerId: user.uid,
-        // Mapping varian sesuai tipe OrderItem baru
         variantName: item.selectedVariant?.name || null,
         variant: item.selectedVariant ? {
             id: item.selectedVariant.id,
@@ -209,13 +209,13 @@ export default function MemberPOSPage() {
         sellerName: userData.shopName || userData.fullName || "Toko Member",
         sellerType: "member",
         coopId: userData.coopId || "public",
-        items: orderItems, // Sekarang tipe data sudah cocok
+        items: orderItems,
         totalAmount: totalAmount,
-        paymentMethod: "pos_cash",
+        paymentMethod: paymentType === 'qris' ? "transfer" : "pos_cash", // Sesuaikan metode bayar
         paymentStatus: "paid",
         status: "completed",
         isOffline: true,
-        notes: "Transaksi Kasir Mandiri (POS)"
+        notes: paymentType === 'qris' ? "Transaksi Kasir Mandiri (QRIS)" : "Transaksi Kasir Mandiri (Tunai)"
       });
 
       setLastOrder({
@@ -223,20 +223,23 @@ export default function MemberPOSPage() {
         buyerName: buyerName || "Umum",
         items: cart,
         totalAmount: totalAmount,
-        paymentMethod: 'pos_cash',
+        paymentMethod: paymentType === 'qris' ? 'transfer' : 'pos_cash',
         createdAt: new Date().toISOString(),
-        cash: parseInt(cashAmount),
+        cash: paymentType === 'qris' ? totalAmount : parseInt(cashAmount), // Cegah minus di struk jika QRIS
       });
 
       toast.success("Transaksi berhasil!");
+      
+      // Reset state
       setCart([]);
       setCashAmount("");
       setBuyerName("Umum");
+      setPaymentType('cash');
       setIsCheckoutOpen(false);
       setIsMobileCartOpen(false);
       setIsSuccessOpen(true);
       fetchProducts();
-
+      
     } catch (error) {
       console.error(error);
       toast.error("Gagal memproses transaksi");
@@ -276,7 +279,6 @@ export default function MemberPOSPage() {
                                 <span className="font-bold text-xs text-zinc-900">{formatCurrency(item.price * item.qty)}</span>
                             </div>
                         </div>
-
                         <button onClick={() => removeFromCart(item.cartId)} className="text-zinc-300 hover:text-red-500 self-center px-1">
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -315,7 +317,7 @@ export default function MemberPOSPage() {
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
             <Input 
               placeholder="Cari produk..." 
-              className="pl-9 bg-white h-10 shadow-sm" 
+              className="pl-9 bg-white h-10 shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -449,12 +451,13 @@ export default function MemberPOSPage() {
                     {selectedProductForVariant?.name}
                 </DialogDescription>
             </DialogHeader>
+            
             <ScrollArea className="max-h-[300px] pr-2">
                 <div className="grid gap-2">
                     {selectedProductForVariant?.variants?.map((v) => (
-                        <Button
+                        <Button 
                             key={v.id}
-                            variant="outline"
+                            variant="outline" 
                             className="justify-between h-auto py-3 px-4 hover:border-blue-300 hover:bg-blue-50"
                             disabled={v.stock <= 0}
                             onClick={() => addToCart(selectedProductForVariant, v)}
@@ -473,7 +476,7 @@ export default function MemberPOSPage() {
         </DialogContent>
       </Dialog>
 
-      {/* --- DIALOG CHECKOUT --- */}
+      {/* --- DIALOG CHECKOUT DENGAN QRIS --- */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -491,44 +494,99 @@ export default function MemberPOSPage() {
                 <Input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="Umum" className="h-9" />
              </div>
 
-             <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-600">Uang Tunai</label>
-                <div className="relative">
-                   <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-green-600" />
-                   <Input 
-                      type="number" 
-                      className="pl-9 h-10 text-lg font-bold" 
-                      placeholder="0" 
-                      value={cashAmount}
-                      onChange={(e) => setCashAmount(e.target.value)}
-                      autoFocus
-                   />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                   {[10000, 20000, 50000, 100000].map(amt => (
-                      <button 
-                        key={amt} 
-                        onClick={() => setCashAmount(amt.toString())}
-                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 rounded text-[10px] font-medium text-zinc-600 border"
-                      >
-                        {amt/1000}k
-                      </button>
-                   ))}
-                   <button onClick={() => setCashAmount(totalAmount.toString())} className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-medium border border-blue-200">Uang Pas</button>
-                </div>
+             {/* Toggles Pembayaran (Tunai vs QRIS) */}
+             <div className="flex bg-zinc-100 p-1 rounded-lg">
+               <button 
+                  onClick={() => setPaymentType('cash')} 
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${paymentType === 'cash' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+               >
+                 Tunai
+               </button>
+               <button 
+                  onClick={() => setPaymentType('qris')} 
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${paymentType === 'qris' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+               >
+                 QRIS / Transfer
+               </button>
              </div>
 
-             <div className={`p-3 rounded border flex justify-between items-center ${changeAmount >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <span className="text-sm font-medium">Kembalian</span>
-                <span className={`text-lg font-bold ${changeAmount >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                   {formatCurrency(Math.abs(changeAmount))}
-                </span>
-             </div>
+             {/* Kondisional Area Berdasarkan Tipe Pembayaran */}
+             {paymentType === 'cash' ? (
+                // --- KONTEN TUNAI ---
+                <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="space-y-2">
+                      <label className="text-xs font-semibold text-zinc-600">Uang Tunai</label>
+                      <div className="relative">
+                          <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-green-600" />
+                          <Input 
+                              type="number" 
+                              className="pl-9 h-10 text-lg font-bold" 
+                              placeholder="0" 
+                              value={cashAmount}
+                              onChange={(e) => setCashAmount(e.target.value)}
+                              autoFocus
+                          />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                          {[10000, 20000, 50000, 100000].map(amt => (
+                              <button 
+                                  key={amt} 
+                                  onClick={() => setCashAmount(amt.toString())}
+                                  className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 rounded text-[10px] font-medium text-zinc-600 border"
+                              >
+                                {amt/1000}k
+                              </button>
+                          ))}
+                          <button onClick={() => setCashAmount(totalAmount.toString())} className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-medium border border-blue-200">Uang Pas</button>
+                      </div>
+                  </div>
+
+                  <div className={`p-3 rounded border flex justify-between items-center ${changeAmount >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      <span className="text-sm font-medium">Kembalian</span>
+                      <span className={`text-lg font-bold ${changeAmount >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {formatCurrency(Math.abs(changeAmount))}
+                      </span>
+                  </div>
+                </div>
+             ) : (
+                // --- KONTEN QRIS ---
+                <div className="flex flex-col items-center justify-center py-2 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                  {userData?.qrisUrl ? (
+                    <>
+                      <div className="w-56 h-56 relative rounded-xl overflow-hidden border-2 border-dashed border-blue-200 bg-zinc-50 p-2">
+                          <Image 
+                            src={userData.qrisUrl} 
+                            alt="QRIS Pembayaran" 
+                            fill 
+                            className="object-contain p-2" 
+                          />
+                      </div>
+                      <p className="text-xs text-zinc-500 text-center max-w-xs">
+                        Arahkan pelanggan untuk scan QRIS ini. Pastikan saldo sudah masuk sebelum klik Selesai.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="text-center p-6 bg-red-50 text-red-600 rounded-xl w-full border border-red-100">
+                        <QrCode className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm font-semibold">QRIS belum diatur</p>
+                        <p className="text-xs mt-1">Anda belum mengunggah QRIS di menu Pengaturan Toko.</p>
+                    </div>
+                  )}
+                </div>
+             )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCheckoutOpen(false)} disabled={processing}>Batal</Button>
-            <Button onClick={handleCheckout} disabled={processing || changeAmount < 0} className="bg-green-600 hover:bg-green-700">
+            <Button 
+                onClick={handleCheckout} 
+                disabled={
+                  processing || 
+                  (paymentType === 'cash' && changeAmount < 0) || 
+                  (paymentType === 'qris' && !userData?.qrisUrl)
+                } 
+                className="bg-green-600 hover:bg-green-700"
+            >
                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Selesai"}
             </Button>
           </DialogFooter>
@@ -537,13 +595,12 @@ export default function MemberPOSPage() {
 
       {/* --- REUSABLE RECEIPT DIALOG --- */}
       <ReceiptDialog 
-        open={isSuccessOpen} 
-        onOpenChange={setIsSuccessOpen} 
-        order={lastOrder}
-        coopName={userData?.coopName || "Koperasi"}
-        cashierName={userData?.fullName || "Member"}
+         open={isSuccessOpen} 
+         onOpenChange={setIsSuccessOpen} 
+         order={lastOrder}
+         coopName={userData?.coopName || "Koperasi"}
+         cashierName={userData?.fullName || "Member"}
       />
-
     </div>
   );
 }

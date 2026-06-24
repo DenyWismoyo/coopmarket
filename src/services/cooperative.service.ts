@@ -6,10 +6,10 @@ import {
   getDocs, 
   addDoc, 
   doc, 
-  getDoc,
+  getDoc, 
   updateDoc, 
   deleteDoc,
-  orderBy
+  orderBy 
 } from "firebase/firestore";
 import { Cooperative } from "@/types/cooperative";
 
@@ -21,7 +21,6 @@ export const cooperativeService = {
     try {
       let q = query(collection(db, COLLECTION), orderBy("name", "asc"));
       
-      // Jika onlyActive true, tambahkan filter status
       if (onlyActive) {
         q = query(q, where("status", "==", "active"));
       }
@@ -52,8 +51,7 @@ export const cooperativeService = {
     }
   },
 
-  // 3. Buat Unit Baru (FIX: Type definition diperbaiki)
-  // Omit 'id', 'createdAt', 'updatedAt' karena field ini di-generate oleh sistem
+  // 3. Buat Unit Baru
   createCooperative: async (data: Omit<Cooperative, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       const timestamp = new Date().toISOString();
@@ -62,7 +60,6 @@ export const cooperativeService = {
         createdAt: timestamp,
         updatedAt: timestamp
       };
-
       const docRef = await addDoc(collection(db, COLLECTION), payload);
       return docRef.id;
     } catch (error) {
@@ -76,14 +73,15 @@ export const cooperativeService = {
     try {
       const docRef = doc(db, COLLECTION, id);
       
-      // Otomatis update field updatedAt
       const payload = {
         ...data,
         updatedAt: new Date().toISOString()
       };
       
-      // Hapus field id jika terbawa dalam data object agar tidak double di firestore
       delete (payload as any).id;
+
+      // [FIX ERROR FIREBASE]: Hapus semua key yang bernilai undefined
+      Object.keys(payload).forEach(key => (payload as any)[key] === undefined && delete (payload as any)[key]);
 
       await updateDoc(docRef, payload);
       return true;
@@ -93,7 +91,7 @@ export const cooperativeService = {
     }
   },
 
-  // 5. Hapus Unit Koperasi (FIX: Fungsi ini ditambahkan kembali)
+  // 5. Hapus Unit Koperasi
   deleteCooperative: async (id: string) => {
     try {
       const docRef = doc(db, COLLECTION, id);

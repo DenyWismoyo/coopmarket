@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { userService } from "@/services/user.service";
-import { authService } from "@/services/auth.service"; // Import Auth Service
+import { authService } from "@/services/auth.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,19 +14,21 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { toast } from "sonner";
-import { Loader2, User, Phone, MapPin, Mail, Building2, CreditCard, Lock } from "lucide-react";
+import { Loader2, User, Phone, MapPin, Mail, Building2, CreditCard, Lock, QrCode, Save } from "lucide-react";
 
 export default function MemberProfilePage() {
   const { user, userData } = useAuth();
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [qrisLoading, setQrisLoading] = useState(false); // State loading untuk QRIS
 
   // Form State Profil
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
     address: "",
-    photoURL: ""
+    photoURL: "",
+    qrisUrl: "" // State untuk QRIS
   });
 
   // Form State Password
@@ -42,7 +44,8 @@ export default function MemberProfilePage() {
         fullName: userData.fullName || "",
         phone: userData.phone || "",
         address: userData.address || "",
-        photoURL: userData.photoURL || ""
+        photoURL: userData.photoURL || "",
+        qrisUrl: userData.qrisUrl || "" // Ambil data QRIS dari context
       });
     }
   }, [userData]);
@@ -50,7 +53,6 @@ export default function MemberProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     setLoading(true);
     try {
       await userService.updateUserProfile(user.uid, formData);
@@ -69,6 +71,22 @@ export default function MemberProfilePage() {
     }
   };
 
+  // Handler Khusus untuk Simpan QRIS
+  const handleSaveQris = async () => {
+    if (!user) return;
+    setQrisLoading(true);
+    try {
+      // Hanya update field qrisUrl ke database
+      await userService.updateUserProfile(user.uid, { qrisUrl: formData.qrisUrl });
+      toast.success("QRIS toko berhasil disimpan!");
+    } catch (error) {
+      console.error("Gagal simpan QRIS:", error);
+      toast.error("Gagal menyimpan QRIS. Coba lagi.");
+    } finally {
+      setQrisLoading(false);
+    }
+  };
+
   // Handler Ganti Password
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +98,6 @@ export default function MemberProfilePage() {
       toast.error("Password minimal 6 karakter");
       return;
     }
-
     setPassLoading(true);
     try {
       await authService.updateUserPassword(passData.newPassword);
@@ -103,20 +120,20 @@ export default function MemberProfilePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl pb-20">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900">Profil Saya</h1>
-        <p className="text-zinc-500">Kelola informasi pribadi dan keamanan akun.</p>
+        <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Profil Saya</h1>
+        <p className="text-zinc-500">Kelola informasi pribadi, QRIS toko, dan keamanan akun.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Kolom Kiri: Kartu Identitas */}
-        <Card className="md:col-span-1 h-fit">
+        <Card className="md:col-span-1 h-fit shadow-sm border-zinc-200">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 relative">
               <Avatar className="w-24 h-24 border-4 border-white shadow-md">
                 <AvatarImage src={formData.photoURL || userData.photoURL} className="object-cover" />
-                <AvatarFallback className="text-2xl bg-blue-100 text-blue-700">
+                <AvatarFallback className="text-2xl bg-blue-100 text-blue-700 font-bold">
                   {userData.fullName?.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -126,7 +143,7 @@ export default function MemberProfilePage() {
               <Building2 className="w-3 h-3" /> {userData.coopName || "Anggota Koperasi"}
             </CardDescription>
             <div className="mt-4 flex justify-center">
-               <Badge variant={userData.role === 'member' ? 'default' : 'secondary'} className="capitalize">
+               <Badge variant={userData.role === 'member' ? 'default' : 'secondary'} className="capitalize bg-blue-600">
                  {userData.role}
                </Badge>
             </div>
@@ -148,45 +165,45 @@ export default function MemberProfilePage() {
 
         {/* Kolom Kanan: Tabs / Forms */}
         <div className="md:col-span-2 space-y-6">
+            
             {/* 1. Form Edit Profil */}
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="space-y-1">
-                <CardTitle>Informasi Pribadi</CardTitle>
-                <CardDescription>Perbarui data diri Anda.</CardDescription>
+            <Card className="shadow-sm border-zinc-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-zinc-100 mb-4">
+                <div className="space-y-1 mb-4">
+                  <CardTitle>Informasi Pribadi</CardTitle>
+                  <CardDescription>Perbarui data diri Anda.</CardDescription>
                 </div>
                 {!isEditing && (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                     Edit Profil
-                </Button>
+                  </Button>
                 )}
-            </CardHeader>
-            <CardContent className="pt-6">
+              </CardHeader>
+              <CardContent>
                 <form onSubmit={handleSave} className="space-y-4">
-                
-                {isEditing && (
-                    <div className="space-y-2 mb-4 p-4 bg-zinc-50 rounded-lg border border-dashed">
-                    <Label>Ganti Foto Profil</Label>
-                    <div className="max-w-[200px]">
+                  {isEditing && (
+                    <div className="space-y-2 mb-4 p-4 bg-zinc-50 rounded-lg border border-dashed border-zinc-200">
+                      <Label>Ganti Foto Profil</Label>
+                      <div className="max-w-[200px]">
                         <ImageUpload 
-                        value={formData.photoURL ? [formData.photoURL] : []}
-                        onChange={handleImageChange}
-                        onRemove={() => setFormData({...formData, photoURL: ""})}
+                          value={formData.photoURL ? [formData.photoURL] : []}
+                          onChange={handleImageChange}
+                          onRemove={() => setFormData({...formData, photoURL: ""})}
                         />
+                      </div>
                     </div>
-                    </div>
-                )}
+                  )}
 
-                <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label>Nama Lengkap</Label>
                     <Input 
                         value={formData.fullName} 
                         onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                         disabled={!isEditing || loading}
                     />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
+                  </div>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Email (Read Only)</Label>
                         <Input className="bg-zinc-50" value={userData.email} disabled />
@@ -199,40 +216,88 @@ export default function MemberProfilePage() {
                             disabled={!isEditing || loading}
                         />
                     </div>
-                </div>
+                  </div>
 
-                <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label>Alamat Lengkap</Label>
                     <Textarea 
                         value={formData.address}
                         onChange={(e) => setFormData({...formData, address: e.target.value})}
                         disabled={!isEditing || loading}
+                        className="resize-none h-24"
                     />
-                </div>
+                  </div>
 
-                {isEditing && (
+                  {isEditing && (
                     <div className="flex justify-end gap-3 pt-4">
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        onClick={() => setIsEditing(false)}
-                        disabled={loading}
-                    >
-                        Batal
-                    </Button>
-                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Simpan Perubahan
-                    </Button>
+                      <Button 
+                          type="button" 
+                          variant="ghost" 
+                          onClick={() => setIsEditing(false)}
+                          disabled={loading}
+                      >
+                          Batal
+                      </Button>
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Simpan Perubahan
+                      </Button>
                     </div>
-                )}
+                  )}
                 </form>
-            </CardContent>
+              </CardContent>
             </Card>
 
-            {/* 2. Form Ganti Password */}
-            <Card className="border-red-100">
-                <CardHeader>
+            {/* 2. Form QRIS Pembayaran */}
+            <Card className="shadow-sm border-blue-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b border-blue-100 flex items-center gap-3">
+                <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-900">QRIS Pembayaran Toko</h3>
+                  <p className="text-xs text-blue-700/70">Terima pembayaran langsung dari pelanggan</p>
+                </div>
+              </div>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-500 leading-relaxed">
+                    Unggah kode QRIS toko Anda di sini. Pembeli akan memindai kode ini saat melakukan *checkout* pesanan dari etalase Anda.
+                  </p>
+                  
+                  <div className="max-w-[250px]">
+                    <ImageUpload 
+                      value={formData.qrisUrl ? [formData.qrisUrl] : []}
+                      onChange={(urls) => setFormData({ ...formData, qrisUrl: urls[0] || "" })}
+                      onRemove={() => setFormData({ ...formData, qrisUrl: "" })}
+                      uploaderName={userData?.fullName}
+                      productName="qris-payment"
+                    />
+                  </div>
+
+                  {/* Tombol Simpan Khusus QRIS */}
+                  <div className="pt-2">
+                     <Button 
+                        type="button"
+                        onClick={handleSaveQris}
+                        disabled={qrisLoading}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                     >
+                        {qrisLoading ? (
+                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                           <Save className="w-4 h-4 mr-2" />
+                        )}
+                        Simpan QRIS
+                     </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. Form Ganti Password */}
+            <Card className="border-red-100 shadow-sm">
+                <CardHeader className="border-b border-red-50/50 mb-4 pb-4">
                     <CardTitle className="text-red-700 flex items-center gap-2">
                         <Lock className="w-5 h-5" /> Keamanan Akun
                     </CardTitle>
@@ -260,8 +325,8 @@ export default function MemberProfilePage() {
                                 />
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button type="submit" variant="secondary" disabled={passLoading || !passData.newPassword}>
+                        <div className="flex justify-end pt-2">
+                            <Button type="submit" variant="secondary" disabled={passLoading || !passData.newPassword} className="hover:bg-zinc-200">
                                 {passLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Update Password
                             </Button>
@@ -269,6 +334,7 @@ export default function MemberProfilePage() {
                     </form>
                 </CardContent>
             </Card>
+
         </div>
       </div>
     </div>

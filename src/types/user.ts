@@ -30,6 +30,7 @@ export interface UserProfile {
   // Khusus Penjual
   shopName?: string;
   shopDescription?: string;
+  qrisUrl?: string;
   
   createdAt: string;
   updatedAt: string;

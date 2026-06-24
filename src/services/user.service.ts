@@ -4,7 +4,7 @@ import { UserProfile } from "@/types";
 
 export const userService = {
   // Update Profil Toko Member
-  updateShopProfile: async (uid: string, data: { shopName: string; shopDescription: string; phone?: string; address?: string }) => {
+  updateShopProfile: async (uid: string, data: { shopName: string; shopDescription: string; phone?: string; address?: string; qrisUrl?: string }) => {
     try {
       const userRef = doc(db, "users", uid);
       await updateDoc(userRef, {
@@ -12,6 +12,7 @@ export const userService = {
         shopDescription: data.shopDescription,
         phone: data.phone,
         address: data.address,
+        qrisUrl: data.qrisUrl, // Mendukung penyimpanan QRIS dari menu toko jika diperlukan
         updatedAt: new Date().toISOString()
       });
       return true;
@@ -25,16 +26,19 @@ export const userService = {
   updateUserProfile: async (uid: string, data: Partial<UserProfile>) => {
     try {
       const userRef = doc(db, "users", uid);
+      
       // Filter hanya field yang diizinkan untuk update profil
+      // PENTING: qrisUrl wajib didaftarkan di sini agar bisa masuk ke database
       const safeData = {
         fullName: data.fullName,
         phone: data.phone,
         address: data.address,
         photoURL: data.photoURL,
+        qrisUrl: data.qrisUrl, // <--- PENAMBAHAN FIELD INI MENYELESAIKAN MASALAH ANDA
         updatedAt: new Date().toISOString()
       };
       
-      // Hapus field undefined
+      // Hapus field undefined agar tidak error di Firestore
       Object.keys(safeData).forEach(key => (safeData as any)[key] === undefined && delete (safeData as any)[key]);
 
       await updateDoc(userRef, safeData);

@@ -11,6 +11,7 @@ export interface Cooperative {
   description?: string;
   status: CooperativeStatus;
   logoUrl?: string;
+  qrisUrl?: string;
   
   // [BARU] Link Lokasi Maps
   mapsUrl?: string; 

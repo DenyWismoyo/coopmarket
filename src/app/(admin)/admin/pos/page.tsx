@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useAuth } from "@/components/auth/auth-provider";
 import { productService } from "@/services/product.service";
 import { orderService } from "@/services/order.service";
+import { authService } from "@/services/auth.service"; 
+import { cooperativeService } from "@/services/cooperative.service"; 
 import { Product, ProductVariant } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +30,9 @@ import {
   Filter,
   ChevronUp,
   X,
-  UserCheck
+  UserCheck,
+  QrCode,
+  ZoomIn // [BARU] Icon Zoom
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -36,7 +40,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ReceiptDialog } from "@/components/modules/orders/receipt-dialog";
 
-// Import tambahan untuk pencarian member
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
 import { UserProfile } from "@/types/user";
@@ -68,7 +71,7 @@ export default function POSPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   
-  // Member Search State (NEW)
+  // Member Search State
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [memberResults, setMemberResults] = useState<UserProfile[]>([]);
   const [selectedMember, setSelectedMember] = useState<UserProfile | null>(null);
@@ -77,6 +80,15 @@ export default function POSPage() {
   const [cashAmount, setCashAmount] = useState("");
   const [processing, setProcessing] = useState(false);
   const [lastOrder, setLastOrder] = useState<any>(null);
+  
+  // Payment Type & QRIS State
+  const [paymentType, setPaymentType] = useState<'cash' | 'qris'>('cash');
+  const [qrisData, setQrisData] = useState<{sellerId: string, sellerName: string, sellerType: string, amount: number, qrisUrl: string | null}[]>([]);
+  const [coopQrisUrl, setCoopQrisUrl] = useState<string | null>(null); // [BARU] QRIS Koperasi
+  const [isFetchingQris, setIsFetchingQris] = useState(false);
+  
+  // [BARU] State untuk memperbesar QRIS
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   // Variant Selection State
   const [selectedProductForVariant, setSelectedProductForVariant] = useState<Product | null>(null);
@@ -85,7 +97,6 @@ export default function POSPage() {
     if (!userData?.coopId) return;
     setLoading(true);
     try {
-      // Menggunakan getPOSProducts agar produk "POS Only" tetap muncul
       const data = await productService.getPOSProducts(userData.coopId);
       setProducts(data);
       
@@ -106,7 +117,6 @@ export default function POSPage() {
 
   useEffect(() => {
     let result = products;
-
     if (search) {
         const lower = search.toLowerCase();
         result = result.filter(p => 
@@ -114,15 +124,12 @@ export default function POSPage() {
             p.sellerName?.toLowerCase().includes(lower)
         );
     }
-
     if (selectedCategory !== "Semua") {
         result = result.filter(p => p.category === selectedCategory);
     }
-
     setFilteredProducts(result);
   }, [search, selectedCategory, products]);
 
-  // Efek Pencarian Member Real-time (NEW)
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (memberSearchQuery.length > 2 && userData?.coopId && !selectedMember) {
@@ -149,6 +156,56 @@ export default function POSPage() {
     return () => clearTimeout(delayDebounceFn);
   }, [memberSearchQuery, userData, selectedMember]);
 
+  useEffect(() => {
+    if (isCheckoutOpen && paymentType === 'qris') {
+      const fetchQris = async () => {
+        setIsFetchingQris(true);
+        try {
+          // [BARU] 1. Ambil QRIS Koperasi (Utama)
+          if (userData?.coopId) {
+             const coopProfile = await cooperativeService.getCooperativeById(userData.coopId);
+             setCoopQrisUrl(coopProfile?.qrisUrl || null);
+          }
+
+          // 2. Kelompokkan total tagihan berdasarkan sellerId
+          const groups = cart.reduce((acc, item) => {
+            if (!acc[item.sellerId]) {
+              acc[item.sellerId] = { 
+                sellerId: item.sellerId, 
+                sellerName: item.sellerName, 
+                sellerType: item.sellerType || 'member', 
+                amount: 0, 
+                qrisUrl: null 
+              };
+            }
+            acc[item.sellerId].amount += (item.price * item.qty);
+            return acc;
+          }, {} as Record<string, {sellerId: string, sellerName: string, sellerType: string, amount: number, qrisUrl: string | null}>);
+
+          // 3. Ambil URL QRIS masing-masing seller
+          const results = [];
+          for (const sellerId in groups) {
+            const group = groups[sellerId];
+            if (group.sellerType === 'coop') {
+              const coop = await cooperativeService.getCooperativeById(sellerId);
+              results.push({ ...group, qrisUrl: coop?.qrisUrl || null });
+            } else {
+              const userProfile = await authService.getUserProfile(sellerId);
+              results.push({ ...group, qrisUrl: userProfile?.qrisUrl || null });
+            }
+          }
+          setQrisData(results);
+        } catch (error) {
+          console.error("Gagal memuat QRIS:", error);
+          toast.error("Gagal memuat data QRIS");
+        } finally {
+          setIsFetchingQris(false);
+        }
+      };
+      fetchQris();
+    }
+  }, [isCheckoutOpen, paymentType, cart, userData]);
+
   const handleProductClick = (product: Product) => {
     if (product.hasVariants && product.variants && product.variants.length > 0) {
         setSelectedProductForVariant(product);
@@ -164,6 +221,7 @@ export default function POSPage() {
       const existing = prev.find(p => p.cartId === uniqueCartId);
       
       const currentStock = variant ? variant.stock : product.stock;
+
       if (existing && existing.qty >= currentStock) {
           toast.error("Stok tidak mencukupi");
           return prev;
@@ -185,7 +243,7 @@ export default function POSPage() {
           qty: 1, 
           selectedVariant: variant,
           price: price 
-      };
+       };
       
       return [...prev, newItem];
     });
@@ -216,7 +274,6 @@ export default function POSPage() {
   const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
   const changeAmount = (parseInt(cashAmount) || 0) - totalAmount;
 
-  // Handle Pilih Member
   const handleSelectMember = (member: UserProfile) => {
       setSelectedMember(member);
       setBuyerName(member.fullName);
@@ -224,7 +281,6 @@ export default function POSPage() {
       setMemberResults([]);
   };
 
-  // Handle Reset Member
   const handleClearMember = () => {
       setSelectedMember(null);
       setBuyerName("Umum");
@@ -232,12 +288,14 @@ export default function POSPage() {
 
   const handleCheckout = async () => {
     if (!user || !userData?.coopId) return;
-    if (parseInt(cashAmount) < totalAmount) {
+    
+    if (paymentType === 'cash' && parseInt(cashAmount) < totalAmount) {
       toast.error("Uang tunai kurang");
       return;
     }
 
     setProcessing(true);
+
     try {
       const orderItems = cart.map(item => ({
         productId: item.id,
@@ -253,7 +311,6 @@ export default function POSPage() {
         } : undefined
       }));
 
-      // Tentukan Buyer ID & Name
       const finalBuyerId = selectedMember ? selectedMember.uid : "guest_pos";
       const finalBuyerName = selectedMember ? selectedMember.fullName : (buyerName || "Umum");
 
@@ -266,11 +323,11 @@ export default function POSPage() {
         coopId: userData.coopId,
         items: orderItems,
         totalAmount: totalAmount,
-        paymentMethod: "pos_cash",
+        paymentMethod: paymentType === 'qris' ? "transfer" : "pos_cash",
         paymentStatus: "paid",
         status: "completed",
         isOffline: true,
-        notes: "Transaksi Kasir (POS)"
+        notes: paymentType === 'qris' ? "Transaksi Kasir (QRIS)" : "Transaksi Kasir (Tunai)"
       });
 
       setLastOrder({
@@ -278,9 +335,9 @@ export default function POSPage() {
         buyerName: finalBuyerName,
         items: cart,
         totalAmount: totalAmount,
-        paymentMethod: 'pos_cash',
+        paymentMethod: paymentType === 'qris' ? 'transfer' : 'pos_cash',
         createdAt: new Date().toISOString(),
-        cash: parseInt(cashAmount),
+        cash: paymentType === 'qris' ? totalAmount : parseInt(cashAmount),
       });
 
       toast.success("Transaksi berhasil!");
@@ -290,13 +347,12 @@ export default function POSPage() {
       setBuyerName("Umum");
       setSelectedMember(null);
       setMemberSearchQuery("");
-
+      setPaymentType('cash');
       setIsCheckoutOpen(false);
       setIsMobileCartOpen(false);
       setIsSuccessOpen(true);
       
       fetchProducts();
-
     } catch (error) {
       console.error(error);
       toast.error("Gagal memproses transaksi");
@@ -305,7 +361,6 @@ export default function POSPage() {
     }
   };
 
-  // --- KOMPONEN KERANJANG (Shared UI) ---
   const CartContent = () => (
     <div className="flex flex-col h-full">
         {cart.length === 0 ? (
@@ -333,13 +388,11 @@ export default function POSPage() {
                                     {item.selectedVariant.name}
                                 </span>
                             )}
-
                             <div className="flex justify-between items-center mt-0.5">
                                 <span className="text-[10px] text-zinc-400">@{formatCurrency(item.price)}</span>
                                 <span className="font-bold text-xs text-zinc-900">{formatCurrency(item.price * item.qty)}</span>
                             </div>
                         </div>
-
                         <button onClick={() => removeFromCart(item.cartId)} className="text-zinc-300 hover:text-red-500 self-center px-1">
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -377,8 +430,8 @@ export default function POSPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
             <Input 
-              placeholder="Cari nama produk / barcode..." 
-              className="pl-9 bg-white h-10 shadow-sm" 
+              placeholder="Cari nama produk / pemilik..." 
+              className="pl-9 bg-white h-10 shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -508,6 +561,17 @@ export default function POSPage() {
          </Sheet>
       </div>
 
+      {/* --- DIALOG ZOOM GAMBAR QRIS [BARU] --- */}
+      <Dialog open={!!zoomedImage} onOpenChange={() => setZoomedImage(null)}>
+        <DialogContent className="sm:max-w-md flex flex-col items-center justify-center p-6 border-none shadow-2xl">
+            <DialogTitle className="sr-only">Perbesar QRIS</DialogTitle>
+            <div className="relative w-full aspect-square max-w-[400px]">
+                {zoomedImage && <Image src={zoomedImage} alt="Zoomed QRIS" fill className="object-contain" />}
+            </div>
+            <Button variant="outline" className="mt-4 w-full" onClick={() => setZoomedImage(null)}>Tutup</Button>
+        </DialogContent>
+      </Dialog>
+
       {/* --- DIALOG PILIH VARIAN --- */}
       <Dialog open={!!selectedProductForVariant} onOpenChange={() => setSelectedProductForVariant(null)}>
         <DialogContent className="sm:max-w-sm">
@@ -517,12 +581,13 @@ export default function POSPage() {
                     {selectedProductForVariant?.name}
                 </DialogDescription>
             </DialogHeader>
+            
             <ScrollArea className="max-h-[300px] pr-2">
                 <div className="grid gap-2">
                     {selectedProductForVariant?.variants?.map((v) => (
-                        <Button
+                        <Button 
                             key={v.id}
-                            variant="outline"
+                            variant="outline" 
                             className="justify-between h-auto py-3 px-4 hover:border-blue-300 hover:bg-blue-50"
                             disabled={v.stock <= 0}
                             onClick={() => addToCart(selectedProductForVariant, v)}
@@ -542,7 +607,10 @@ export default function POSPage() {
       </Dialog>
 
       {/* --- DIALOG CHECKOUT --- */}
-      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
+      <Dialog open={isCheckoutOpen} onOpenChange={(open) => {
+        setIsCheckoutOpen(open);
+        if (!open) setPaymentType('cash'); // Reset tipe pembayaran jika ditutup
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Pembayaran Kasir</DialogTitle>
@@ -581,7 +649,7 @@ export default function POSPage() {
                             onChange={(e) => {
                                 setMemberSearchQuery(e.target.value);
                                 if(e.target.value === "") setBuyerName("Umum");
-                                else setBuyerName(e.target.value); // Sementara isi nama dengan input search
+                                else setBuyerName(e.target.value);
                             }}
                             placeholder="Cari nama member (Ketik min 3 huruf)..." 
                             className="pl-9 h-10" 
@@ -608,44 +676,160 @@ export default function POSPage() {
                 )}
              </div>
 
-             <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-600">Uang Tunai</label>
-                <div className="relative">
-                   <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-green-600" />
-                   <Input 
-                      type="number" 
-                      className="pl-9 h-10 text-lg font-bold" 
-                      placeholder="0" 
-                      value={cashAmount}
-                      onChange={(e) => setCashAmount(e.target.value)}
-                      autoFocus
-                   />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                   {[10000, 20000, 50000, 100000].map(amt => (
-                      <button 
-                        key={amt} 
-                        onClick={() => setCashAmount(amt.toString())}
-                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 rounded text-[10px] font-medium text-zinc-600 border"
-                      >
-                        {amt/1000}k
-                      </button>
-                   ))}
-                   <button onClick={() => setCashAmount(totalAmount.toString())} className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-medium border border-blue-200">Uang Pas</button>
-                </div>
+             {/* Toggles Pembayaran (Tunai vs QRIS) */}
+             <div className="flex bg-zinc-100 p-1 rounded-lg">
+               <button 
+                  onClick={() => setPaymentType('cash')} 
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${paymentType === 'cash' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+               >
+                 Tunai
+               </button>
+               <button 
+                  onClick={() => setPaymentType('qris')} 
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${paymentType === 'qris' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+               >
+                 QRIS / Transfer
+               </button>
              </div>
 
-             <div className={`p-3 rounded border flex justify-between items-center ${changeAmount >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <span className="text-sm font-medium">Kembalian</span>
-                <span className={`text-lg font-bold ${changeAmount >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                   {formatCurrency(Math.abs(changeAmount))}
-                </span>
-             </div>
+             {/* Kondisional Area Tipe Pembayaran */}
+             {paymentType === 'cash' ? (
+                // --- KONTEN TUNAI ---
+                <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-zinc-600">Uang Tunai</label>
+                        <div className="relative">
+                            <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-green-600" />
+                            <Input 
+                                type="number" 
+                                className="pl-9 h-10 text-lg font-bold" 
+                                placeholder="0" 
+                                value={cashAmount}
+                                onChange={(e) => setCashAmount(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {[10000, 20000, 50000, 100000].map(amt => (
+                                <button 
+                                    key={amt} 
+                                    onClick={() => setCashAmount(amt.toString())}
+                                    className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 rounded text-[10px] font-medium text-zinc-600 border"
+                                >
+                                {amt/1000}k
+                                </button>
+                            ))}
+                            <button onClick={() => setCashAmount(totalAmount.toString())} className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-medium border border-blue-200">Uang Pas</button>
+                        </div>
+                    </div>
+
+                    <div className={`p-3 rounded border flex justify-between items-center ${changeAmount >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                        <span className="text-sm font-medium">Kembalian</span>
+                        <span className={`text-lg font-bold ${changeAmount >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                            {formatCurrency(Math.abs(changeAmount))}
+                        </span>
+                    </div>
+                </div>
+             ) : (
+                // --- KONTEN QRIS MULTI-TENANT & KOPERASI ---
+                <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200 max-h-[50vh] overflow-y-auto pr-2">
+                  {isFetchingQris ? (
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+                      <p className="text-sm text-zinc-500">Menyiapkan QRIS Penjual...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      
+                      {/* [BARU] 1. QRIS KOPERASI (Utama) */}
+                      <div className="border rounded-xl p-4 bg-blue-50 flex flex-col items-center">
+                         <div className="text-center mb-3">
+                            <p className="font-bold text-blue-900">QRIS Koperasi (Utama)</p>
+                            <p className="text-xs text-blue-700/80">Bayar sekaligus ke Unit Pusat</p>
+                            <p className="text-sm font-bold text-blue-800 mt-1">Total: {formatCurrency(totalAmount)}</p>
+                         </div>
+                         
+                         {coopQrisUrl ? (
+                            <>
+                               <div 
+                                  className="w-48 h-48 relative rounded-xl overflow-hidden border-2 border-dashed border-blue-300 bg-white p-2 cursor-pointer group hover:border-blue-500 transition-colors"
+                                  onClick={() => setZoomedImage(coopQrisUrl)}
+                               >
+                                  <Image src={coopQrisUrl} alt="QRIS Koperasi" fill className="object-contain p-2" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                      <ZoomIn className="w-8 h-8 text-white" />
+                                  </div>
+                               </div>
+                               <p className="text-[10px] text-zinc-500 mt-2 flex items-center gap-1">
+                                  Klik gambar untuk memperbesar <ZoomIn className="w-3 h-3" />
+                               </p>
+                            </>
+                         ) : (
+                            <div className="text-center p-4 bg-white/50 text-red-500 rounded-xl w-full border border-red-100">
+                               <QrCode className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                               <p className="text-xs font-semibold">QRIS Koperasi belum diatur</p>
+                            </div>
+                         )}
+                      </div>
+
+                      {/* [BARU] 2. QRIS PENJUAL TITIPAN (Jika ada barang member) */}
+                      {qrisData.filter(d => d.sellerType !== 'coop').length > 0 && (
+                         <>
+                           <div className="relative flex items-center py-2">
+                              <div className="flex-grow border-t border-zinc-200"></div>
+                              <span className="flex-shrink-0 mx-4 text-xs font-semibold text-zinc-400 uppercase tracking-widest">Atau Bayar Terpisah</span>
+                              <div className="flex-grow border-t border-zinc-200"></div>
+                           </div>
+                           
+                           {qrisData.filter(d => d.sellerType !== 'coop').map((data, idx) => (
+                              <div key={idx} className="border rounded-xl p-4 bg-zinc-50 flex flex-col items-center">
+                                 <div className="text-center mb-3">
+                                    <p className="font-bold text-zinc-900">{data.sellerName}</p>
+                                    <p className="text-xs text-zinc-500">QRIS Member (Pemilik Produk)</p>
+                                    <p className="text-sm font-medium text-blue-700 mt-1">Tagihan: {formatCurrency(data.amount)}</p>
+                                 </div>
+                                 
+                                 {data.qrisUrl ? (
+                                    <>
+                                        <div 
+                                            className="w-40 h-40 relative rounded-xl overflow-hidden border-2 border-dashed border-blue-200 bg-white p-2 cursor-pointer group hover:border-blue-400 transition-colors"
+                                            onClick={() => setZoomedImage(data.qrisUrl!)}
+                                        >
+                                           <Image src={data.qrisUrl} alt={`QRIS ${data.sellerName}`} fill className="object-contain p-2" />
+                                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                               <ZoomIn className="w-6 h-6 text-white" />
+                                           </div>
+                                        </div>
+                                        <p className="text-[10px] text-zinc-500 mt-2">Klik gambar untuk memperbesar</p>
+                                    </>
+                                 ) : (
+                                    <div className="text-center p-4 bg-red-50 text-red-600 rounded-xl w-full border border-red-100">
+                                       <QrCode className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                       <p className="text-xs font-semibold">QRIS belum diatur oleh penjual ini</p>
+                                    </div>
+                                 )}
+                              </div>
+                           ))}
+                         </>
+                      )}
+                    </div>
+                  )}
+                </div>
+             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setIsCheckoutOpen(false)} disabled={processing}>Batal</Button>
-            <Button onClick={handleCheckout} disabled={processing || changeAmount < 0} className="bg-green-600 hover:bg-green-700">
+            <Button 
+                onClick={handleCheckout} 
+                disabled={
+                   processing || 
+                   (paymentType === 'cash' && changeAmount < 0) || 
+                   // Blokir jika QRIS utama koperasi kosong (bisa disesuaikan logikanya jika Anda ingin longgar)
+                   (paymentType === 'qris' && !coopQrisUrl) 
+                } 
+                className="bg-green-600 hover:bg-green-700"
+            >
                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Selesai"}
             </Button>
           </DialogFooter>
@@ -654,13 +838,12 @@ export default function POSPage() {
 
       {/* --- REUSABLE RECEIPT DIALOG --- */}
       <ReceiptDialog 
-        open={isSuccessOpen} 
-        onOpenChange={setIsSuccessOpen} 
-        order={lastOrder}
-        coopName={userData?.coopName}
-        cashierName={userData?.fullName}
+         open={isSuccessOpen} 
+         onOpenChange={setIsSuccessOpen} 
+         order={lastOrder}
+         coopName={userData?.coopName}
+         cashierName={userData?.fullName}
       />
-
     </div>
   );
 }
