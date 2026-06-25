@@ -1,3 +1,4 @@
+// File: src/app/admin/settings/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,14 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { toast } from "sonner";
-import { Loader2, Save, Building2, MapPin, QrCode } from "lucide-react";
+import { Loader2, Save, Building2, MapPin, QrCode, ScanLine, RefreshCw } from "lucide-react";
 import { Cooperative } from "@/types/cooperative";
 
 export default function AdminSettingsPage() {
   const { userData } = useAuth();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-
   const [formData, setFormData] = useState<Partial<Cooperative>>({
     name: "",
     description: "",
@@ -27,7 +27,8 @@ export default function AdminSettingsPage() {
     logoUrl: "",
     city: "",
     mapsUrl: "",
-    qrisUrl: "" 
+    qrisUrl: "",
+    qrStoreUrl: ""
   });
 
   // Load data koperasi saat ini
@@ -37,7 +38,6 @@ export default function AdminSettingsPage() {
         try {
           const data = await cooperativeService.getCooperativeById(userData.coopId);
           if (data) {
-            // [FIX UI]: Tambahkan fallbacks || "" agar tidak ada state yang bernilai undefined
             setFormData({
               name: data.name || "",
               description: data.description || "",
@@ -47,7 +47,8 @@ export default function AdminSettingsPage() {
               logoUrl: data.logoUrl || "",
               city: data.city || "",
               mapsUrl: data.mapsUrl || "",
-              qrisUrl: data.qrisUrl || "" 
+              qrisUrl: data.qrisUrl || "",
+              qrStoreUrl: data.qrStoreUrl || "" 
             });
           }
         } catch (error) {
@@ -66,22 +67,37 @@ export default function AdminSettingsPage() {
   };
 
   const handleLogoChange = (urls: string[]) => {
-    if (urls.length > 0) {
-      setFormData({ ...formData, logoUrl: urls[0] });
-    }
+    if (urls.length > 0) setFormData({ ...formData, logoUrl: urls[0] });
   };
 
   const handleQrisChange = (urls: string[]) => {
-    if (urls.length > 0) {
-      setFormData({ ...formData, qrisUrl: urls[0] });
-    }
+    if (urls.length > 0) setFormData({ ...formData, qrisUrl: urls[0] });
+  };
+
+  const handleQrStoreChange = (urls: string[]) => {
+    if (urls.length > 0) setFormData({ ...formData, qrStoreUrl: urls[0] });
+  };
+
+  // FUNGSI BARU: Generate QR Code Internal
+  const handleGenerateInternalQR = () => {
+    if (!userData?.coopId) return;
+    
+    // Dapatkan base URL dari window (misal: http://localhost:3000 atau https://domainanda.com)
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const internalStoreUrl = `${baseUrl}/marketplace/store/${userData.coopId}`;
+    
+    // Gunakan API publik untuk mengenerate QR Code berdasarkan URL Toko
+    const generatedQrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(internalStoreUrl)}&margin=10`;
+    
+    setFormData({ ...formData, qrStoreUrl: generatedQrApiUrl });
+    toast.success("QR Code Toko Internal dibuat! Klik 'Simpan Profil' untuk menyimpan.");
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userData?.coopId) return;
+    
     setLoading(true);
-
     try {
       await cooperativeService.updateCooperative(userData.coopId, {
         description: formData.description,
@@ -90,7 +106,8 @@ export default function AdminSettingsPage() {
         email: formData.email,
         logoUrl: formData.logoUrl,
         mapsUrl: formData.mapsUrl,
-        qrisUrl: formData.qrisUrl 
+        qrisUrl: formData.qrisUrl,
+        qrStoreUrl: formData.qrStoreUrl 
       });
       toast.success("Profil koperasi berhasil diperbarui!");
     } catch (error) {
@@ -105,7 +122,6 @@ export default function AdminSettingsPage() {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-zinc-400" /></div>;
   }
 
-  // Jika bukan admin unit (misal Super Admin masuk menu ini), tampilkan info umum
   if (userData?.role === 'super_admin') {
       return (
           <div className="space-y-6">
@@ -122,7 +138,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl pb-20">
+    <div className="space-y-6 max-w-5xl pb-20">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Pengaturan Koperasi</h1>
         <p className="text-zinc-500">Sesuaikan profil dan metode pembayaran unit koperasi Anda.</p>
@@ -140,18 +156,18 @@ export default function AdminSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-8">
             
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-3 gap-6">
                 {/* Logo Upload */}
                 <div className="space-y-3">
                     <Label className="text-base font-semibold">Logo Koperasi</Label>
-                    <div className="bg-zinc-50 border border-dashed border-zinc-200 rounded-xl p-4 flex flex-col items-center justify-center">
+                    <div className="bg-zinc-50 border border-dashed border-zinc-200 rounded-xl p-4 flex flex-col items-center justify-center h-[280px]">
                         <ImageUpload 
                             value={formData.logoUrl ? [formData.logoUrl] : []}
                             onChange={handleLogoChange}
                             onRemove={() => setFormData({...formData, logoUrl: ""})}
                         />
                         <p className="text-[10px] text-zinc-400 mt-3 text-center">
-                            Format: JPG, PNG. Disarankan rasio 1:1 (persegi).
+                            Format JPG/PNG. Rasio 1:1.
                         </p>
                     </div>
                 </div>
@@ -161,15 +177,44 @@ export default function AdminSettingsPage() {
                     <Label className="text-base font-semibold flex items-center gap-2">
                         <QrCode className="w-4 h-4 text-blue-600" /> QRIS Koperasi
                     </Label>
-                    <div className="bg-blue-50/30 border border-dashed border-blue-200 rounded-xl p-4 flex flex-col items-center justify-center">
+                    <div className="bg-blue-50/30 border border-dashed border-blue-200 rounded-xl p-4 flex flex-col items-center justify-center h-[280px]">
                         <ImageUpload 
                             value={formData.qrisUrl ? [formData.qrisUrl] : []}
                             onChange={handleQrisChange}
                             onRemove={() => setFormData({...formData, qrisUrl: ""})}
                         />
                         <p className="text-[10px] text-blue-600/60 mt-3 text-center px-4">
-                            QRIS resmi milik Koperasi untuk pembayaran terpusat.
+                            Untuk kasir dan tagihan anggota.
                         </p>
+                    </div>
+                </div>
+
+                {/* QR Store Upload & Generate */}
+                <div className="space-y-3">
+                    <Label className="text-base font-semibold flex items-center gap-2">
+                        <ScanLine className="w-4 h-4 text-red-600" /> QR Toko / Pameran
+                    </Label>
+                    <div className="bg-red-50/30 border border-dashed border-red-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[280px]">
+                        <ImageUpload 
+                            value={formData.qrStoreUrl ? [formData.qrStoreUrl] : []}
+                            onChange={handleQrStoreChange}
+                            onRemove={() => setFormData({...formData, qrStoreUrl: ""})}
+                        />
+                        
+                        <div className="mt-4 flex flex-col items-center gap-2 w-full">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                                onClick={handleGenerateInternalQR}
+                                className="w-full text-red-600 border-red-200 hover:bg-red-50 text-xs font-semibold"
+                            >
+                                <RefreshCw className="w-3 h-3 mr-1" /> Buat Otomatis (Toko Internal)
+                            </Button>
+                            <p className="text-[10px] text-red-600/60 text-center px-2 leading-tight">
+                                Klik "Buat Otomatis" untuk menghasilkan QR Code ke toko aplikasi ini, atau upload manual jika Anda memiliki toko eksternal.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -259,7 +304,6 @@ export default function AdminSettingsPage() {
                     Simpan Profil
                 </Button>
             </div>
-
           </CardContent>
         </Card>
       </form>

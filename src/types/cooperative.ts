@@ -1,9 +1,10 @@
+// File: src/types/cooperative.ts
 export type CooperativeStatus = 'active' | 'inactive' | 'suspended';
 
 export interface Cooperative {
   id: string;
   name: string;
-  code?: string; // Kode unik, misal: KMP-SOLO
+  code?: string;
   city: string;
   address: string;
   phone: string;
@@ -12,14 +13,10 @@ export interface Cooperative {
   status: CooperativeStatus;
   logoUrl?: string;
   qrisUrl?: string;
+  mapsUrl?: string;
+  qrStoreUrl?: string; // [BARU] Field untuk QR Code Link Toko / Pameran
   
-  // [BARU] Link Lokasi Maps
-  mapsUrl?: string; 
-  
-  // Metadata
   createdAt: string;
   updatedAt: string;
-  
-  // Optional: Statistik sederhana
-  memberCount?: number; 
+  memberCount?: number;
 }
