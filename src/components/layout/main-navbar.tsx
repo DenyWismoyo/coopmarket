@@ -56,7 +56,7 @@ export function MainNavbar() {
             </div>
             <div className="flex flex-col leading-none">
                 <span className="text-lg tracking-tight text-zinc-900 font-bold">CoopConnect</span>
-                <span className="text-[10px] text-red-600 font-bold tracking-widest uppercase">Koperasi Merah Putih</span>
+        
             </div>
           </Link>
           

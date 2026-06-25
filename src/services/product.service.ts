@@ -1,3 +1,4 @@
+// File: src/services/product.service.ts
 import { db } from "@/lib/firebase";
 import { 
   collection, 
@@ -8,13 +9,11 @@ import {
   getDoc, 
   addDoc, 
   updateDoc, 
-  deleteDoc,
-  orderBy,
-  limit,
-  startAfter,
-  QueryConstraint,
-  DocumentSnapshot,
-  getCountFromServer 
+  orderBy, 
+  limit, 
+  startAfter, 
+  QueryConstraint, 
+  DocumentSnapshot 
 } from "firebase/firestore";
 import { Product } from "@/types/product";
 
@@ -67,6 +66,7 @@ export const productService = {
       }
 
       const snapshot = await getDocs(q);
+
       // Filter client-side untuk soft delete
       const data = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as Product))
@@ -83,9 +83,9 @@ export const productService = {
     }
   },
 
-  // PUBLIC: Ambil Produk Etalase
+  // PUBLIC: Ambil Produk Etalase (Mendukung Multi-Kategori / Array)
   getPublicProducts: async (
-    category?: string, 
+    category?: string | string[], 
     pageSize = 12, 
     lastDoc?: DocumentSnapshot
   ) => {
@@ -97,8 +97,13 @@ export const productService = {
         limit(pageSize)
       ];
 
-      if (category && category !== "Semua") {
-        constraints.push(where("category", "==", category));
+      // LOGIKA ARRAY UNTUK CHECKBOX KATEGORI
+      if (category) {
+        if (Array.isArray(category) && category.length > 0) {
+          constraints.push(where("category", "in", category));
+        } else if (typeof category === "string" && category !== "Semua") {
+          constraints.push(where("category", "==", category));
+        }
       }
 
       if (lastDoc) {
@@ -189,7 +194,7 @@ export const productService = {
     } catch (error) { throw error; }
   },
 
-  // [UPDATED] Soft Delete Implementation
+  // Soft Delete Implementation
   deleteProduct: async (id: string) => {
     try {
         const docRef = doc(db, COLLECTION, id);
@@ -220,11 +225,12 @@ export const productService = {
       }
 
       const snapshot = await getDocs(q);
+
       // Fallback filter
       const data = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as Product))
           .filter(p => p.status !== 'archived');
-      
+          
       return {
         data,
         lastVisible: snapshot.docs[snapshot.docs.length - 1],
@@ -232,7 +238,7 @@ export const productService = {
       };
     } catch (error) { throw error; }
   },
-  
+
   // Legacy support
   getSellerProducts: async (sellerId: string) => {
       try {
