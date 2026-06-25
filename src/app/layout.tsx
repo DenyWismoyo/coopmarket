@@ -1,15 +1,30 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "sonner";
-import QueryProvider from "@/lib/query-provider"; // Import Provider Baru
+import QueryProvider from "@/lib/query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// 1. Tambahkan Viewport untuk warna browser mobile (Warna Merah sesuai tema landing page Anda)
+export const viewport: Viewport = {
+  themeColor: "#b91c1c",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+// 2. Tambahkan manifest ke Metadata
 export const metadata: Metadata = {
-  title: "CoopConnect - Koperasi Digital",
-  description: "Platform Koperasi Digital Terintegrasi",
+  title: "CoopConnect",
+  description: "Platform Digital Terintegrasi",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CoopConnect",
+  },
 };
 
 export default function RootLayout({
@@ -20,7 +35,6 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={inter.className}>
-        {/* Bungkus dengan QueryProvider */}
         <QueryProvider>
           <AuthProvider>
             {children}
