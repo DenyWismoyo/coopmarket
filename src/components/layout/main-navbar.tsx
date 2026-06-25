@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, LogOut, User, Store, LayoutDashboard } from "lucide-react";
+import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -36,12 +36,11 @@ export function MainNavbar() {
 
   const getInitials = (name: string) => name?.substring(0, 2).toUpperCase() || "U";
   
-  // Cek akses admin
+  // Cek akses khusus admin dan unit admin
   const hasAdminAccess = userData?.role && ['admin', 'super_admin', 'unit_admin'].includes(userData.role);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
-      {/* Container diubah jadi w-full dengan padding yang pas agar simetris */}
       <div className="w-full flex h-16 items-center justify-between px-4 md:px-8 lg:px-12">
         
         {/* LOGO AREA */}
@@ -57,7 +56,7 @@ export function MainNavbar() {
             </div>
             <div className="flex flex-col leading-none">
                 <span className="text-lg tracking-tight text-zinc-900 font-bold">CoopConnect</span>
-                
+                <span className="text-[10px] text-red-600 font-bold tracking-widest uppercase">Koperasi Merah Putih</span>
             </div>
           </Link>
           
@@ -65,6 +64,23 @@ export function MainNavbar() {
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-600">
             <Link href="/marketplace" className="hover:text-red-600 transition-colors">Belanja</Link>
             <Link href="/about" className="hover:text-red-600 transition-colors">Tentang Kami</Link>
+            
+            {/* TOMBOL EMAS/ANIMATIF: Khusus Admin & Unit Admin saat Pameran */}
+            {hasAdminAccess && (
+              <Link 
+                href="/catalog-display" 
+                className="relative inline-flex items-center gap-2 px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-white bg-gradient-to-r from-red-600 via-amber-500 to-red-600 bg-[length:200%_auto] rounded-full shadow-md shadow-red-200 transition-all duration-500 hover:bg-right hover:scale-105 border border-red-500/50 overflow-hidden animate-pulse hover:animate-none"
+              >
+                {/* Efek Dot Indikator Live Berkedip */}
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                
+                <MonitorPlay className="w-3.5 h-3.5" />
+                <span>Display Katalog</span>
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -114,7 +130,7 @@ export function MainNavbar() {
                 
                 <DropdownMenuSeparator />
                 
-                {/* [BARU] Menu Khusus Pengguna Biasa (Customer) */}
+                {/* Menu Khusus Pengguna Biasa (Customer) */}
                 {userData?.role === 'customer' && (
                   <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4 text-zinc-500" /> Profil Saya

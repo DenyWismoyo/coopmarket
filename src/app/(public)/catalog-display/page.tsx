@@ -1,0 +1,333 @@
+// File: src/app/admin/catalog-display/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useAuth } from "@/components/auth/auth-provider";
+import { productService } from "@/services/product.service";
+import { Product } from "@/types/product";
+import { formatCurrency } from "@/lib/utils";
+
+import { Loader2, ArrowLeft, MonitorPlay, Sparkles, Package, ScanLine } from "lucide-react";
+
+const ITEMS_PER_PAGE = 3; // Berubah menjadi 3 agar pas dengan 1 kolom QR di kanan
+const PAGE_DURATION = 10000; // 10 Detik per halaman
+
+export default function CatalogDisplayPage() {
+  const { user, userData, loading: authLoading, isAdmin } = useAuth();
+  const router = useRouter();
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  // Proteksi Halaman & Fetch Data
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user || !isAdmin) {
+      router.push("/");
+      return;
+    }
+
+    const fetchProducts = async () => {
+      try {
+        if (userData?.coopId) {
+          const data = await productService.getPOSProducts(userData.coopId);
+          setProducts(data);
+        }
+      } catch (error) {
+        console.error("Gagal memuat produk pameran:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [user, userData, authLoading, isAdmin, router]);
+
+  // Persiapan Data: Memastikan jumlah produk genap kelipatan 3
+  const paddedProducts = [...products];
+  if (products.length > 0) {
+    while (paddedProducts.length % ITEMS_PER_PAGE !== 0) {
+      paddedProducts.push(products[paddedProducts.length % products.length]);
+    }
+  }
+
+  // Memecah produk menjadi per halaman (chunk array)
+  const pages = [];
+  for (let i = 0; i < paddedProducts.length; i += ITEMS_PER_PAGE) {
+    pages.push(paddedProducts.slice(i, i + ITEMS_PER_PAGE));
+  }
+
+  // Logika Timer Transisi Halaman (Crossfade)
+  useEffect(() => {
+    if (pages.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setPageIndex((prev) => (prev + 1) % pages.length);
+    }, PAGE_DURATION);
+
+    return () => clearInterval(timer);
+  }, [pages.length]);
+
+  if (authLoading || loading) {
+    return (
+      <div className="h-screen w-screen bg-[#030303] flex flex-col items-center justify-center text-white overflow-hidden">
+        <MonitorPlay className="w-20 h-20 text-red-600 animate-pulse mb-6 drop-shadow-[0_0_30px_rgba(220,38,38,0.8)]" />
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        <p className="mt-4 text-zinc-500 tracking-widest uppercase text-sm font-bold">Menyiapkan Etalase Premium...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen w-screen bg-[#030303] text-white selection:bg-red-600 overflow-hidden font-sans flex flex-col relative">
+      
+      {/* --- BACKGROUND EFFECTS --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="absolute top-[-30%] left-[-10%] w-[60%] h-[60%] rounded-full bg-red-900/15 blur-[180px]" />
+        <div className="absolute bottom-[-30%] right-[-10%] w-[60%] h-[60%] rounded-full bg-amber-900/10 blur-[180px]" />
+      </div>
+
+      {/* --- HEADER --- */}
+      <header className="relative z-50 w-full px-10 py-5 flex items-center justify-between bg-black/50 backdrop-blur-xl border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-5">
+          <div className="relative w-12 h-12 bg-white rounded-2xl p-1 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+            <Image src="/icon.png" alt="Logo" fill className="object-contain p-1.5" />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              Katalog Digital <Sparkles className="w-5 h-5 text-amber-500/80" />
+            </h1>
+            <p className="text-sm text-zinc-400 font-bold uppercase tracking-[0.2em]">{userData?.coopName}</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => router.push('/')}
+          className="group flex items-center gap-3 px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 text-sm font-medium hover:bg-white hover:text-black hover:border-white transition-all duration-500"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Tutup Display
+        </button>
+      </header>
+
+      {/* --- PROGRESS BAR LINE (Indikator Waktu 10 Detik) --- */}
+      <div className="w-full h-1 bg-zinc-900 relative z-50">
+        <div 
+          key={`progress-${pageIndex}`} // Memicu ulang animasi per halaman
+          className="h-full bg-gradient-to-r from-red-600 via-amber-500 to-red-600 animate-[fill-progress_10s_linear_forwards]"
+        />
+      </div>
+
+      {/* --- MAIN CONTENT (3 Produk Kiri + 1 QR Kanan) --- */}
+      <main className="relative z-10 flex-1 flex flex-row p-8 xl:p-10 gap-8 overflow-hidden">
+        
+        {/* KIRI: GALERI PRODUK DINAMIS */}
+        <section className="relative flex-1 rounded-3xl h-full flex items-center">
+          {products.length === 0 ? (
+            <div className="w-full text-center">
+              <Package className="w-24 h-24 text-zinc-800 mx-auto mb-6" />
+              <h2 className="text-3xl font-bold text-zinc-600 mb-2">Etalase Kosong</h2>
+            </div>
+          ) : (
+            <div className="relative w-full h-[90%]">
+              {pages.map((page, pIdx) => {
+                const isActive = pIdx === pageIndex;
+
+                return (
+                  <div 
+                    key={`page-wrap-${pIdx}`} 
+                    className={`absolute inset-0 flex items-center justify-between gap-6 transition-opacity duration-[1200ms] ease-in-out
+                      ${isActive ? 'opacity-100 z-20 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}
+                    `}
+                  >
+                    {page.map((product, idx) => (
+                      <div 
+                        key={`prod-${pIdx}-${idx}`} 
+                        className={`relative h-full flex-1 rounded-[2.2rem] p-[3px] group overflow-hidden transition-all duration-[1200ms] ease-out
+                          ${isActive ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'}
+                        `}
+                        style={{ transitionDelay: isActive ? `${idx * 150}ms` : '0ms' }}
+                      >
+                        
+                        {/* --- EFEK GARIS JALAN BERGANTIAN --- */}
+                        {/* Menjalankan 1 dari 3 animasi keyframes (fade-seq-0, 1, 2) */}
+                        {isActive && (
+                          <div 
+                            className="absolute inset-0 z-0 opacity-0"
+                            style={{ animation: `fade-seq-${idx} 10s linear forwards` }}
+                          >
+                            <div className="absolute top-1/2 left-1/2 w-[250%] h-[250%] bg-[conic-gradient(from_0deg,transparent_0_280deg,rgba(220,38,38,1)_360deg)] animate-[spin-border_4s_linear_infinite]" />
+                          </div>
+                        )}
+
+                        {/* --- KARTU PRODUK UTAMA --- */}
+                        <div className="relative z-10 w-full h-full bg-zinc-950 rounded-[2rem] overflow-hidden">
+                          {/* Image */}
+                          {product.images && product.images.length > 0 ? (
+                            <Image 
+                              src={product.images[0]} 
+                              alt={product.name}
+                              fill
+                              className={`object-cover transition-transform duration-[10000ms] ease-linear ${isActive ? 'scale-110' : 'scale-100'}`}
+                              sizes="33vw"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
+                              <Package className="w-20 h-20 text-zinc-700" />
+                            </div>
+                          )}
+                          
+                          {/* Gradient Gelap di Bawah */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
+                          
+                          {/* Stok */}
+                          <div className="absolute top-6 right-6 z-20">
+                            {product.stock <= 0 ? (
+                              <div className="px-4 py-1.5 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-sm">Habis</div>
+                            ) : product.stock <= 5 ? (
+                              <div className="px-4 py-1.5 bg-amber-500/20 border border-amber-500/50 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-sm animate-pulse">
+                                Sisa {product.stock}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {/* Teks Konten */}
+                          <div className="absolute bottom-0 left-0 right-0 p-8 z-20">
+                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em] mb-3">
+                              {product.category}
+                            </p>
+                            <h3 className="text-2xl xl:text-3xl font-bold text-white leading-tight line-clamp-2 mb-6 drop-shadow-lg">
+                              {product.name}
+                            </h3>
+                            <div>
+                              <p className="text-[10px] text-red-400 font-black mb-1 tracking-widest uppercase">Harga Spesial</p>
+                              <p className="text-3xl xl:text-4xl font-light text-white drop-shadow-md tracking-tight">
+                                {formatCurrency(product.price).replace("Rp", "Rp ")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* KANAN: KOLOM TETAP QR CODE */}
+        <section className="w-[300px] xl:w-[380px] h-full flex flex-col justify-center flex-shrink-0">
+          <div className="bg-zinc-900/60 border border-white/10 rounded-[2.5rem] p-8 xl:p-10 backdrop-blur-xl relative overflow-hidden group hover:border-red-500/50 transition-colors duration-700 shadow-2xl">
+            
+            {/* Glow Background inside QR panel */}
+            <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-amber-600/5 pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-600/20 text-red-500 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                <ScanLine className="w-8 h-8" />
+              </div>
+              
+              <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Belanja Sekarang</h2>
+              <p className="text-sm text-zinc-400 mb-8 leading-relaxed">
+                Scan kode QR ini menggunakan kamera ponsel Anda untuk membeli produk yang sedang tampil.
+              </p>
+
+              {/* QR Code Container */}
+              <div className="w-full aspect-square bg-white rounded-3xl p-4 shadow-[0_0_40px_rgba(220,38,38,0.2)] mb-8 transform transition-transform duration-500 group-hover:scale-105">
+                <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-dashed border-zinc-200">
+                  <Image 
+                    src="/qrtechnopark.png" 
+                    alt="QR Code Koperasi"
+                    fill
+                    className="object-contain p-2"
+                  />
+                </div>
+              </div>
+              
+              <div className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-zinc-300">
+                Official Marketplace
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* --- FOOTER MARQUEE --- */}
+      <footer className="relative z-50 w-full bg-[#0a0a0a] border-t border-white/5 py-3 flex-shrink-0">
+        <div className="whitespace-nowrap flex items-center animate-[marquee_30s_linear_infinite]">
+          <span className="text-sm font-medium tracking-[0.3em] uppercase mx-16 text-zinc-400">
+            DAPATKAN HARGA SPESIAL SELAMA PAMERAN
+          </span>
+          <span className="text-sm font-medium tracking-[0.3em] uppercase mx-16 text-amber-500/80">
+            SCAN QR CODE DI STAN KAMI UNTUK PEMESANAN
+          </span>
+          <span className="text-sm font-medium tracking-[0.3em] uppercase mx-16 text-zinc-400">
+            BANGGA BUATAN INDONESIA
+          </span>
+          {/* Duplikasi agar loop seamless */}
+          <span className="text-sm font-medium tracking-[0.3em] uppercase mx-16 text-zinc-400">
+            DAPATKAN HARGA SPESIAL SELAMA PAMERAN
+          </span>
+          <span className="text-sm font-medium tracking-[0.3em] uppercase mx-16 text-amber-500/80">
+            SCAN QR CODE DI STAN KAMI UNTUK PEMESANAN
+          </span>
+        </div>
+      </footer>
+
+      {/* --- KEYFRAMES --- */}
+      <style jsx global>{`
+        /* Progress Bar Linier Utama (10 Detik) */
+        @keyframes fill-progress {
+          0% { width: 0%; }
+          100% { width: 100%; }
+        }
+
+        /* Animasi Garis Putar */
+        @keyframes spin-border {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Sekuensial Fade-in Fade-out untuk 3 produk bergantian (Durasi Total: 10s) */
+        /* Produk 1: Aktif detik 0.0 - 3.3 */
+        @keyframes fade-seq-0 {
+          0% { opacity: 0; }
+          2% { opacity: 1; }
+          32% { opacity: 1; }
+          34% { opacity: 0; }
+          100% { opacity: 0; }
+        }
+
+        /* Produk 2: Aktif detik 3.3 - 6.6 */
+        @keyframes fade-seq-1 {
+          0% { opacity: 0; }
+          32% { opacity: 0; }
+          34% { opacity: 1; }
+          65% { opacity: 1; }
+          67% { opacity: 0; }
+          100% { opacity: 0; }
+        }
+
+        /* Produk 3: Aktif detik 6.6 - 10.0 */
+        @keyframes fade-seq-2 {
+          0% { opacity: 0; }
+          65% { opacity: 0; }
+          67% { opacity: 1; }
+          98% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+    </div>
+  );
+}
