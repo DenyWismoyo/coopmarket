@@ -45,7 +45,14 @@ export function LoginForm() {
       }
 
       if (profile.status === "active") {
-        window.location.href = redirectUrl || "/member";
+        if (profile.role === "customer") {
+          // Jika role adalah customer, cegah akses ke /member dan arahkan ke halaman utama /
+          const isRedirectToMember = redirectUrl && redirectUrl.includes("/member");
+          window.location.href = (redirectUrl && !isRedirectToMember) ? redirectUrl : "/";
+        } else {
+          // Jika role adalah member (atau lainnya yang bukan admin/customer)
+          window.location.href = redirectUrl || "/member";
+        }
       } else if (profile.status === "pending") {
         window.location.href = "/pending";
       } else {
