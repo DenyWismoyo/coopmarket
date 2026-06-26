@@ -12,8 +12,148 @@ import { formatCurrency } from "@/lib/utils";
 import { Loader2, ArrowLeft, MonitorPlay, Sparkles, Package, LayoutGrid } from "lucide-react";
 
 const ITEMS_PER_PAGE = 3;
-const PAGE_DURATION = 10000;
+const PAGE_DURATION = 10000; // Layar pindah setiap 10 detik
 
+// ============================================================================
+// KOMPONEN: KARTU PRODUK DENGAN ANIMASI 3D FLIP (AUTO-ROTASI GAMBAR)
+// ============================================================================
+const ProductCard = ({ product, isActive, idx }: { product: Product; isActive: boolean; idx: number }) => {
+  const images = product.images && product.images.length > 0 ? product.images : [];
+  const hasMultiple = images.length > 1;
+  
+  // State untuk mengelola gambar sisi Depan dan Belakang kartu 3D
+  const [frontIndex, setFrontIndex] = useState(0);
+  const [backIndex, setBackIndex] = useState(hasMultiple ? 1 : 0);
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  useEffect(() => {
+    // Jika sedang tidak tampil di layar atau gambarnya hanya 1, hentikan putaran
+    if (!isActive || !hasMultiple) return;
+    
+    // Auto-flip setiap 4 detik
+    const timer = setInterval(() => {
+      setIsFlipped(prev => {
+        const nextFlipped = !prev;
+        
+        // Setelah kartu membalik, kita siapkan gambar baru untuk sisi yang sedang tersembunyi
+        // Timeout 600ms disesuaikan dengan durasi animasi CSS transition-transform
+        if (nextFlipped) {
+          setTimeout(() => setFrontIndex((backIndex + 1) % images.length), 600);
+        } else {
+          setTimeout(() => setBackIndex((frontIndex + 1) % images.length), 600);
+        }
+        return nextFlipped;
+      });
+    }, 4000); 
+
+    return () => clearInterval(timer);
+  }, [isActive, hasMultiple, frontIndex, backIndex, images.length]);
+
+  return (
+    <div 
+      className={`relative h-full flex-1 rounded-[2.2rem] p-[3px] group overflow-hidden transition-all duration-[1200ms] ease-out 
+        ${isActive ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'}
+      `}
+      style={{ transitionDelay: isActive ? `${idx * 150}ms` : '0ms' }}
+    >
+      {/* Efek Border Berjalan Merah-Emas */}
+      {isActive && (
+        <div className="absolute inset-0 z-0 opacity-0" style={{ animation: `fade-seq-${idx} 10s linear forwards` }}>
+          <div className="absolute top-1/2 left-1/2 w-[250%] h-[250%] bg-[conic-gradient(from_0deg,transparent_0_280deg,rgba(220,38,38,1)_360deg)] animate-[spin-border_4s_linear_infinite]" />
+        </div>
+      )}
+
+      {/* Kontainer Utama */}
+      <div className="relative z-10 w-full h-full bg-zinc-950 rounded-[2rem] overflow-hidden" style={{ perspective: '1000px' }}>
+        
+        {/* CONTAINER YANG BERPUTAR 3D */}
+        <div 
+          className="relative w-full h-full transition-transform duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
+          style={{ 
+            transformStyle: 'preserve-3d', 
+            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
+          }}
+        >
+          {/* WAJAH DEPAN (FRONT FACE) */}
+          <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden' }}>
+            {images.length > 0 ? (
+              <Image 
+                src={images[frontIndex]} 
+                alt={product.name}
+                fill
+                className={`object-cover transition-transform duration-[10000ms] ease-linear ${isActive ? 'scale-110' : 'scale-100'}`}
+                sizes="33vw"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
+                <Package className="w-20 h-20 text-zinc-700" />
+              </div>
+            )}
+          </div>
+
+          {/* WAJAH BELAKANG (BACK FACE) */}
+          <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+            {images.length > 0 && (
+              <Image 
+                src={images[backIndex]} 
+                alt={product.name}
+                fill
+                className={`object-cover transition-transform duration-[10000ms] ease-linear ${isActive ? 'scale-110' : 'scale-100'}`}
+                sizes="33vw"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* LAYER OVERLAY & TEXT (Diletakkan terpisah dari kontainer 3D agar text tidak ikut terbalik/tetap statis!) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500 z-20 pointer-events-none" />
+        
+        <div className="absolute top-6 right-6 z-30 pointer-events-none">
+          {product.stock <= 0 ? (
+            <div className="px-4 py-1.5 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-sm shadow-xl">Habis</div>
+          ) : product.stock <= 5 ? (
+            <div className="px-4 py-1.5 bg-amber-500/20 border border-amber-500/50 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-sm animate-pulse shadow-xl">
+              Sisa {product.stock}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 p-8 z-30 pointer-events-none">
+          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em] mb-3 drop-shadow-md">
+            {product.category}
+          </p>
+          <h3 className="text-2xl xl:text-3xl font-bold text-white leading-tight line-clamp-2 mb-6 drop-shadow-lg">
+            {product.name}
+          </h3>
+          <div>
+            <p className="text-[10px] text-red-400 font-black mb-1 tracking-widest uppercase drop-shadow-md">Harga Spesial</p>
+            <p className="text-3xl xl:text-4xl font-light text-white drop-shadow-md tracking-tight">
+              {formatCurrency(product.price).replace("Rp", "Rp ")}
+            </p>
+          </div>
+          
+          {/* Indikator Varian (Dots) */}
+          {hasMultiple && (
+             <div className="absolute bottom-4 right-8 flex gap-1.5 shadow-xl">
+                {images.map((_, i) => {
+                   const isCurrent = isFlipped ? i === backIndex : i === frontIndex;
+                   return (
+                     <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${isCurrent ? 'w-5 bg-red-500' : 'w-1.5 bg-white/40'}`} />
+                   )
+                })}
+             </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+
+// ============================================================================
+// KOMPONEN UTAMA (PAGE)
+// ============================================================================
 export default function CatalogDisplayPage() {
   const { user, userData, loading: authLoading, isAdmin } = useAuth();
   const router = useRouter();
@@ -50,7 +190,7 @@ export default function CatalogDisplayPage() {
     fetchData();
   }, [user, userData, authLoading, isAdmin, router]);
 
-  // Ekstrak ID YouTube dan ubah menjadi URL Embed
+  // Ekstrak ID YouTube dan ubah menjadi URL Embed yang Bersih
   const getYoutubeEmbedUrl = (url?: string) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -58,7 +198,6 @@ export default function CatalogDisplayPage() {
 
     if (match && match[2].length === 11) {
       const videoId = match[2];
-      // mute=0 agar suara menyala, controls=0 untuk bersih dari UI
       return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${videoId}`;
     }
     return url;
@@ -161,15 +300,14 @@ export default function CatalogDisplayPage() {
         </div>
       )}
 
-      {/* MAIN CONTENT AREA MENGGUNAKAN CSS GRID (Untuk Overlapping Layout) */}
+      {/* MAIN CONTENT AREA MENGGUNAKAN CSS GRID */}
       <main className="relative z-10 flex-1 grid p-4 sm:p-6 lg:p-8 xl:p-10 min-h-0">
         
         {/* ============================================================== */}
-        {/* LAYER 1: KATALOG (Menghilang secara halus saat masuk mode Video) */}
+        {/* LAYER 1: KATALOG */}
         {/* ============================================================== */}
         <div className={`col-start-1 row-start-1 flex flex-row gap-4 lg:gap-8 w-full h-full transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${activeView === 'catalog' ? 'opacity-100 z-10' : 'opacity-0 scale-95 pointer-events-none z-0'}`}>
             
-            {/* VIEW: GALERI PRODUK */}
             <section className="relative flex-1 rounded-3xl h-full flex items-center min-w-0">
               {products.length === 0 ? (
                 <div className="w-full text-center">
@@ -187,41 +325,14 @@ export default function CatalogDisplayPage() {
                           ${isActive ? 'opacity-100 z-20 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}
                         `}
                       >
+                        {/* PANGGIL KOMPONEN PRODUCT CARD DENGAN ANIMASI FLIP */}
                         {page.map((product, idx) => (
-                          <div 
+                          <ProductCard 
                             key={`prod-${pIdx}-${idx}`} 
-                            className={`relative h-full flex-1 rounded-[2.2rem] p-[3px] group overflow-hidden transition-all duration-[1200ms] ease-out 
-                              ${isActive ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'}
-                            `}
-                            style={{ transitionDelay: isActive ? `${idx * 150}ms` : '0ms' }}
-                          >
-                            <div className="relative z-10 w-full h-full bg-zinc-950 rounded-[2rem] overflow-hidden">
-                              {product.images && product.images.length > 0 ? (
-                                <Image 
-                                  src={product.images[0]} 
-                                  alt={product.name}
-                                  fill
-                                  className={`object-cover transition-transform duration-[10000ms] ease-linear ${isActive ? 'scale-110' : 'scale-100'}`}
-                                  sizes="33vw"
-                                />
-                              ) : (
-                                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
-                                  <Package className="w-20 h-20 text-zinc-700" />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
-                              <div className="absolute bottom-0 left-0 right-0 p-8 z-20">
-                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em] mb-3">{product.category}</p>
-                                <h3 className="text-2xl xl:text-3xl font-bold text-white leading-tight line-clamp-2 mb-6 drop-shadow-lg">{product.name}</h3>
-                                <div>
-                                  <p className="text-[10px] text-red-400 font-black mb-1 tracking-widest uppercase">Harga Spesial</p>
-                                  <p className="text-3xl xl:text-4xl font-light text-white drop-shadow-md tracking-tight">
-                                    {formatCurrency(product.price).replace("Rp", "Rp ")}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                            product={product} 
+                            isActive={isActive} 
+                            idx={idx} 
+                          />
                         ))}
                       </div>
                     );
@@ -230,12 +341,12 @@ export default function CatalogDisplayPage() {
               )}
             </section>
             
-            {/* Tempat kosong penyangga Sidebar Katalog (agar ukuran ruang kiri-kanan stabil) */}
+            {/* Tempat kosong penyangga Sidebar Katalog */}
             <section className="w-[28vw] min-w-[260px] max-w-[380px] h-full flex-shrink-0" />
         </div>
 
         {/* ============================================================================== */}
-        {/* LAYER 2: INTERAKTIF VIDEO & QR WIDGET (Hanya Layer ini yang mengubah dimensi)  */}
+        {/* LAYER 2: INTERAKTIF VIDEO & QR WIDGET */}
         {/* ============================================================================== */}
         <div className="col-start-1 row-start-1 w-full h-full flex flex-row justify-end pointer-events-none z-20">
            
@@ -243,7 +354,7 @@ export default function CatalogDisplayPage() {
               ${activeView === 'catalog' ? 'w-[28vw] min-w-[260px] max-w-[380px]' : 'w-full'}
            `}>
 
-              {/* SINGLE VIDEO PLAYER (Element ini TIDAK AKAN PERNAH UNMOUNT sehingga frame video/suara terus berlanjut) */}
+              {/* SINGLE VIDEO PLAYER (TIDAK PERNAH UNMOUNT) */}
               {coopData?.promoVideoUrl && (
                 <div 
                   onClick={() => activeView === "catalog" && setActiveView("video")}
@@ -259,12 +370,11 @@ export default function CatalogDisplayPage() {
                     className="absolute inset-0 w-full h-full border-0 pointer-events-none"
                     allow="autoplay; fullscreen; encrypted-media"
                   />
-                  {/* Overlay wajib ada agar frame bisa ter-klik dari luar tanpa menekan video di dalamnya */}
                   <div className="absolute inset-0 bg-transparent pointer-events-auto"></div>
                 </div>
               )}
 
-              {/* WIDGET QR CODE (Menciut hingga hilang saat mode full video aktif) */}
+              {/* WIDGET QR CODE */}
               <div className={`flex flex-col bg-zinc-900/60 border border-white/10 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl
                  ${activeView === 'catalog'
                    ? 'flex-1 opacity-100 p-6 lg:p-8 mt-6'
@@ -306,6 +416,10 @@ export default function CatalogDisplayPage() {
       {/* KEYFRAMES */}
       <style jsx global>{`
         @keyframes fill-progress { 0% { width: 0%; } 100% { width: 100%; } }
+        @keyframes spin-border { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+        @keyframes fade-seq-0 { 0% { opacity: 0; } 2% { opacity: 1; } 32% { opacity: 1; } 34% { opacity: 0; } 100% { opacity: 0; } }
+        @keyframes fade-seq-1 { 0% { opacity: 0; } 32% { opacity: 0; } 34% { opacity: 1; } 65% { opacity: 1; } 67% { opacity: 0; } 100% { opacity: 0; } }
+        @keyframes fade-seq-2 { 0% { opacity: 0; } 65% { opacity: 0; } 67% { opacity: 1; } 98% { opacity: 1; } 100% { opacity: 0; } }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
     </div>
