@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================================
+    // 1. HELPER FUNCTIONS (ANTI-CRASH)
+    // ========================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Menggunakan .get() agar tidak crash jika role/coopId tidak ada (misal pada customer baru)
+    function getRole() {
+      let data = getUserData();
+      return data != null ? data.get('role', '') : '';
+    }
+
+    function getCoopId() {
+      let data = getUserData();
+      return data != null ? data.get('coopId', '') : '';
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && getRole() == 'super_admin';
+    }
+
+    function isUnitAdmin(coopId) {
+      return isAuthenticated() && getRole() == 'unit_admin' && getCoopId() == coopId;
+    }
+
+    function isCustomer() {
+      return isAuthenticated() && getRole() == 'customer';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+
+    // ========================================================
+    // 2. RULES PER COLLECTION
+    // ========================================================
+
+    // --- USERS (Profil) ---
+    match /users/{userId} {
+      // Izinkan semua yang login untuk membaca agar bisa tarik data No WA Seller saat checkout
+      allow read: if isAuthenticated(); 
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) 
+                    || isUnitAdmin(resource.data.get('coopId', ''))
+                    || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+
+    // --- COOPERATIVES (Data Koperasi/Unit) ---
+    match /cooperatives/{coopId} {
+      // Harus bisa dibaca publik (termasuk customer yang sedang checkout)
+      allow read: if true; 
+      allow write: if isSuperAdmin() || isUnitAdmin(coopId);
+    }
+
+
+    // --- PRODUCTS (Etalase Produk & Marketplace) ---
+    match /products/{productId} {
+      // Customer dan Publik bisa baca produk aktif
+      allow read: if (resource.data.get('marketplaceStatus', '') == 'published_marketplace' && resource.data.get('status', '') == 'active')
+                  || (isAuthenticated() && request.auth.uid == resource.data.get('sellerId', ''))
+                  || isUnitAdmin(resource.data.get('coopId', ''))
+                  || isSuperAdmin();
+                  
+      // Izinkan update (dikurangi stoknya oleh customer) melalui runTransaction di orderService
+      allow create, update: if isAuthenticated();
+      
+      allow delete: if isAuthenticated() && (
+                      request.auth.uid == resource.data.get('sellerId', '') || 
+                      isUnitAdmin(resource.data.get('coopId', ''))
+                    );
+    }
+
+
+    // --- ORDERS (Transaksi Belanja & POS) ---
+    match /orders/{orderId} {
+      // Siapa saja yang login (Customer/Member) bebas membuat order
+      allow create: if isAuthenticated();
+      
+      // Customer bisa membaca order-nya sendiri di menu Pesanan Saya
+      allow read: if isAuthenticated() && (
+                    request.auth.uid == resource.data.get('buyerId', '') || 
+                    request.auth.uid == resource.data.get('sellerId', '') || 
+                    isUnitAdmin(resource.data.get('coopId', '')) ||
+                    isSuperAdmin()
+                  );
+                  
+      // Customer, Seller, atau Admin bisa update status (misal: Selesai / Dibatalkan)
+      allow update: if isAuthenticated() && (
+                      request.auth.uid == resource.data.get('buyerId', '') || 
+                      request.auth.uid == resource.data.get('sellerId', '') || 
+                      isUnitAdmin(resource.data.get('coopId', '')) ||
+                      isSuperAdmin()
+                    );
+                    
+      allow delete: if false; 
+    }
+
+
+    // --- SAVINGS TRANSACTIONS (Simpanan Anggota) ---
+    match /savings_transactions/{txId} {
+      allow read: if isAuthenticated() && (
+                    request.auth.uid == resource.data.get('userId', '') || 
+                    isUnitAdmin(resource.data.get('coopId', '')) ||
+                    isSuperAdmin()
+                  );
+      allow write: if isUnitAdmin(request.resource.data.get('coopId', '')) || isSuperAdmin();
+    }
+
+
+    // --- INVENTORY & STOCK MOVEMENTS (Mutasi / Opname) ---
+    match /stock_movements/{movementId} {
+      allow read, write: if isUnitAdmin(resource.data.get('coopId', '')) || isSuperAdmin();
+    }
+
+
+    // --- EXPENSES (Pengeluaran Operasional) ---
+    match /expenses/{expenseId} {
+      allow read, delete: if isUnitAdmin(resource.data.get('coopId', '')) || isSuperAdmin();
+      allow create, update: if isUnitAdmin(request.resource.data.get('coopId', '')) || isSuperAdmin();
+    }
+
+
+    // --- ANNOUNCEMENTS (Pengumuman Koperasi) ---
+    match /announcements/{announcementId} {
+      // Customer & Member bisa baca pengumuman
+      allow read: if isAuthenticated();
+      allow write: if isUnitAdmin(request.resource.data.get('coopId', '')) || isSuperAdmin();
+    }
+
+  }
+}

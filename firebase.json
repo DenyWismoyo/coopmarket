@@ -1,0 +1,25 @@
+{
+  "firestore": [
+    {
+      "database": "coopmarket",
+      "rules": "firestore.coopmarket.rules",
+      "indexes": "firestore.coopmarket.indexes.json"
+    }
+  ],
+  "functions": [
+    {
+      "source": "functions", 
+      "codebase": "koperasi_apps",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+}
