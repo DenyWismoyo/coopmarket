@@ -14,7 +14,7 @@ import {
    DropdownMenuTrigger
  } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download } from "lucide-react";
+import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download, Menu, Bell } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -22,11 +22,17 @@ import { CartSheet } from "@/components/layout/cart-sheet";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 
+// Import Hook Notifikasi
+import { useNotifications } from "@/hooks/use-notifications";
+
 export function MainNavbar() {
   const { user, userData, loading } = useAuth();
   const totalCartItems = useCartStore((state) => state.totalItems());
   const router = useRouter();
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Panggil Data Notifikasi Realtime
+  const { totalNotifications, notificationsList } = useNotifications();
 
   // --- LOGIKA PWA INSTALL ---
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -62,16 +68,26 @@ export function MainNavbar() {
   };
 
   const getInitials = (name: string) => name?.substring(0, 2).toUpperCase() || "U";
-
-  // Cek akses khusus admin dan unit admin
   const hasAdminAccess = userData?.role && ['admin', 'super_admin', 'unit_admin'].includes(userData.role);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="w-full flex h-16 items-center justify-between px-4 md:px-8 lg:px-12">
                  
-        {/* LOGO AREA */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 md:gap-8">
+          {/* HAMBURGER MENU */}
+          <div className="md:hidden flex items-center">
+            <Button variant="ghost" size="icon" className="relative hover:bg-zinc-100">
+               <Menu className="w-6 h-6 text-zinc-900" />
+               {totalNotifications > 0 && (
+                  <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                  </span>
+               )}
+            </Button>
+          </div>
+
           <Link href="/" className="flex items-center gap-3 font-bold text-xl text-zinc-900 group">
             <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
                 <Image 
@@ -81,28 +97,24 @@ export function MainNavbar() {
                     className="object-contain"
                 />
             </div>
-            <div className="flex flex-col leading-none">
+            <div className="flex flex-col leading-none hidden sm:flex">
                 <span className="text-lg tracking-tight text-zinc-900 font-bold">CoopConnect</span>                     
             </div>
           </Link>
                      
-          {/* Main Navigation (Desktop) */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-600">
             <Link href="/marketplace" className="hover:text-red-600 transition-colors">Belanja</Link>
             <Link href="/about" className="hover:text-red-600 transition-colors">Tentang Kami</Link>
                          
-            {/* TOMBOL EMAS/ANIMATIF: Khusus Admin & Unit Admin saat Pameran */}
             {hasAdminAccess && (
               <Link 
                  href="/catalog-display" 
                  className="relative inline-flex items-center gap-2 px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-white bg-gradient-to-r from-red-600 via-amber-500 to-red-600 bg-[length:200%_auto] rounded-full shadow-md shadow-red-200 transition-all duration-500 hover:bg-right hover:scale-105 border border-red-500/50 overflow-hidden animate-pulse hover:animate-none"
               >
-                {/* Efek Dot Indikator Live Berkedip */}
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                 </span>
-                                 
                 <MonitorPlay className="w-3.5 h-3.5" />
                 <span>Display Katalog</span>
               </Link>
@@ -110,10 +122,7 @@ export function MainNavbar() {
           </nav>
         </div>
 
-        {/* ACTIONS AREA */}
-        <div className="flex items-center gap-4">
-                     
-          {/* Tombol Install App (PWA) */}
+        <div className="flex items-center gap-2 md:gap-4">
           {isInstallable && (
             <Button 
               variant="outline" 
@@ -126,7 +135,43 @@ export function MainNavbar() {
             </Button>
           )}
 
-          {/* Cart Button */}
+          {/* FUNGSI DROPDOWN NOTIFIKASI LONCENG */}
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative hover:bg-zinc-100">
+                  <Bell className="w-5 h-5 text-zinc-600" />
+                  {totalNotifications > 0 && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 mt-2">
+                <DropdownMenuLabel>Pemberitahuan</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notificationsList.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-zinc-500">
+                    Tidak ada pemberitahuan baru
+                  </div>
+                ) : (
+                  notificationsList.map(notif => (
+                    <DropdownMenuItem 
+                      key={notif.id} 
+                      onClick={() => router.push(notif.href)} 
+                      className="cursor-pointer flex flex-col items-start gap-0.5 p-3 hover:bg-red-50"
+                    >
+                      <span className="font-semibold text-sm text-zinc-900">{notif.title}</span>
+                      <span className="text-xs text-zinc-500">{notif.desc}</span>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <Button 
              variant="ghost" 
              size="icon" 
@@ -141,7 +186,6 @@ export function MainNavbar() {
             )}
           </Button>
 
-          {/* User Menu / Auth Buttons */}
           {loading ? (
              <div className="w-8 h-8 rounded-full bg-zinc-200 animate-pulse" />
           ) : user ? (
@@ -169,14 +213,12 @@ export function MainNavbar() {
                                  
                 <DropdownMenuSeparator />
                                  
-                {/* Menu Khusus Pengguna Biasa (Customer) */}
                 {userData?.role === 'customer' && (
                   <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4 text-zinc-500" /> Profil Saya
                   </DropdownMenuItem>
                 )}
 
-                {/* Menu Member */}
                 {userData?.role === 'member' && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/member')} className="cursor-pointer">
@@ -188,7 +230,6 @@ export function MainNavbar() {
                   </>
                 )}
                                  
-                {/* Menu Admin (Jika punya akses) */}
                 {hasAdminAccess && (
                   <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer bg-zinc-50">
                     <LayoutDashboard className="mr-2 h-4 w-4 text-zinc-500" /> Dashboard Admin

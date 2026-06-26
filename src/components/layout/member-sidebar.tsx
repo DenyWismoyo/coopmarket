@@ -1,3 +1,4 @@
+// File: src/components/layout/member-sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -14,7 +15,6 @@ import {
   History,
   MonitorPlay,
   CreditCard,
-  Building2,
   ExternalLink,
   LucideIcon
 } from "lucide-react";
@@ -23,12 +23,15 @@ import { authService } from "@/services/auth.service";
 import { useAuth } from "@/components/auth/auth-provider";
 import { JSX } from "react";
 
-// Definisi Tipe Data Menu
+// Import Hook Notifikasi
+import { useNotifications } from "@/hooks/use-notifications";
+
 type MenuItem = {
   href: string;
   label: string;
   icon: LucideIcon | ((props: any) => JSX.Element);
-  external?: boolean; // Properti opsional
+  external?: boolean;
+  hasNotification?: boolean; 
 };
 
 type MenuGroup = {
@@ -41,12 +44,14 @@ export function MemberSidebar() {
   const router = useRouter();
   const { userData } = useAuth();
 
+  // Ambil status notifikasi realtime
+  const { hasMemberSales } = useNotifications();
+
   const handleLogout = async () => {
     await authService.logout();
     router.push("/login");
   };
 
-  // Definisi Menu dengan Grouping yang disempurnakan
   const menuGroups: MenuGroup[] = [
     {
       title: "Keanggotaan",
@@ -59,17 +64,17 @@ export function MemberSidebar() {
     {
       title: "Toko Saya (Seller)",
       items: [
-        { href: "/member/shop", label: "Dashboard Toko", icon: Store }, // Pointing to Seller Dashboard
+        { href: "/member/shop", label: "Dashboard Toko", icon: Store },
         { href: "/member/shop/products", label: "Produk Saya", icon: PackageIcon },
         { href: "/member/shop/pos", label: "Kasir / POS", icon: MonitorPlay },
-        { href: "/member/sales", label: "Laporan Penjualan", icon: TrendingUp },
+        // Pasang Notifikasi Penjualan Toko Disini
+        { href: "/member/sales", label: "Laporan Penjualan", icon: TrendingUp, hasNotification: hasMemberSales },
       ]
     },
     {
       title: "Aktivitas Belanja",
       items: [
         { href: "/member/orders", label: "Pesanan Saya", icon: ShoppingBag },
-        // Link Eksternal ke Marketplace (karena user bilang member/shop bukan marketplace)
         { href: "/marketplace", label: "Ke Marketplace", icon: ExternalLink, external: true },
       ]
     }
@@ -77,7 +82,6 @@ export function MemberSidebar() {
 
   return (
     <div className="w-full h-full flex flex-col bg-white border-r border-zinc-200 min-h-screen">
-      {/* Header Sidebar */}
       <div className="p-6 border-b border-zinc-100 flex items-center gap-3">
         <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm shadow-blue-200">
           <CreditCard className="w-4 h-4" />
@@ -88,9 +92,7 @@ export function MemberSidebar() {
         </div>
       </div>
       
-      {/* Scrollable Area */}
       <div className="flex-1 overflow-y-auto py-6 px-4 no-scrollbar">
-        {/* User Info Compact */}
         {userData && (
            <div className="mb-6 p-3 bg-zinc-50 rounded-xl border border-zinc-100 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
@@ -103,7 +105,6 @@ export function MemberSidebar() {
            </div>
         )}
 
-        {/* Menu Iteration */}
         <div className="space-y-8">
           {menuGroups.map((group, index) => (
             <div key={index}>
@@ -113,17 +114,12 @@ export function MemberSidebar() {
               <nav className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  // Logic active state yang ketat agar tidak salah highlight
-                  // Cek exact match untuk root menu, atau startsWith untuk submenu
                   const isActive = pathname === item.href || (item.href !== '/member' && pathname.startsWith(item.href + '/'));
                   
                   if (item.external) {
                     return (
                         <Link key={item.href} href={item.href} className="block">
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start h-9 text-zinc-500 hover:text-blue-600 hover:bg-blue-50"
-                          >
+                          <Button variant="ghost" className="w-full justify-start h-9 text-zinc-500 hover:text-blue-600 hover:bg-blue-50 relative">
                             <Icon className="mr-3 h-4 w-4" />
                             {item.label}
                           </Button>
@@ -136,7 +132,7 @@ export function MemberSidebar() {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-start h-9 transition-all duration-200",
+                          "w-full justify-start h-9 transition-all duration-200 relative",
                           isActive 
                             ? "bg-blue-50 text-blue-700 font-semibold shadow-sm border border-blue-100 translate-x-1" 
                             : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
@@ -144,6 +140,13 @@ export function MemberSidebar() {
                       >
                         <Icon className={cn("mr-3 h-4 w-4", isActive ? "text-blue-600" : "text-zinc-400")} />
                         {item.label}
+                        
+                        {item.hasNotification && (
+                            <span className="relative flex h-2 w-2 ml-auto">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                        )}
                       </Button>
                     </Link>
                   );
@@ -152,7 +155,6 @@ export function MemberSidebar() {
             </div>
           ))}
 
-          {/* Settings Section terpisah */}
           <div>
             <h3 className="px-2 text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">
               Akun
@@ -177,7 +179,6 @@ export function MemberSidebar() {
         </div>
       </div>
       
-      {/* Footer / Logout */}
       <div className="p-4 border-t border-zinc-100 bg-zinc-50/30">
         <Button 
           variant="ghost" 
@@ -192,7 +193,6 @@ export function MemberSidebar() {
   );
 }
 
-// Icon Helper untuk Sidebar
 function PackageIcon(props: any) {
     return (
         <svg
