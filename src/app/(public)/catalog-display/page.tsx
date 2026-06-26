@@ -124,24 +124,27 @@ export default function CatalogDisplayPage() {
       </div>
 
       {/* MAIN CONTENT */}
-      <main className="relative z-10 flex-1 flex flex-row p-8 xl:p-10 gap-8 overflow-hidden">
+      {/* Menggunakan padding responsif dan min-h-0 agar flex child tidak meluap */}
+      <main className="relative z-10 flex-1 flex flex-row p-4 sm:p-6 lg:p-8 xl:p-10 gap-4 lg:gap-8 overflow-hidden min-h-0">
         
         {/* GALERI PRODUK */}
-        <section className="relative flex-1 rounded-3xl h-full flex items-center">
+        {/* min-w-0 untuk mencegah overflow horizontal */}
+        <section className="relative flex-1 rounded-3xl h-full flex items-center min-w-0">
           {products.length === 0 ? (
             <div className="w-full text-center">
               <Package className="w-24 h-24 text-zinc-800 mx-auto mb-6" />
               <h2 className="text-3xl font-bold text-zinc-600 mb-2">Etalase Kosong</h2>
             </div>
           ) : (
-            <div className="relative w-full h-[90%]">
+            <div className="relative w-full h-full py-4 sm:py-6">
+              {/* Mengubah h-[90%] menjadi h-full dengan padding vertikal agar proporsional di semua layar */}
               {pages.map((page, pIdx) => {
                 const isActive = pIdx === pageIndex;
 
                 return (
                   <div 
                     key={`page-wrap-${pIdx}`} 
-                    className={`absolute inset-0 flex items-center justify-between gap-6 transition-opacity duration-[1200ms] ease-in-out
+                    className={`absolute inset-0 flex items-center justify-between gap-4 lg:gap-6 transition-opacity duration-[1200ms] ease-in-out
                       ${isActive ? 'opacity-100 z-20 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}
                     `}
                   >
@@ -216,25 +219,31 @@ export default function CatalogDisplayPage() {
         </section>
 
         {/* KOLOM TETAP QR CODE (TERHUBUNG KE DATABASE) */}
-        <section className="w-[300px] xl:w-[380px] h-full flex flex-col justify-center flex-shrink-0">
-          <div className="bg-zinc-900/60 border border-white/10 rounded-[2.5rem] p-8 xl:p-10 backdrop-blur-xl relative overflow-hidden group hover:border-red-500/50 transition-colors duration-700 shadow-2xl">
+        {/* Menggunakan lebar persentase dengan batasan min/max width */}
+        <section className="w-[28vw] min-w-[260px] max-w-[380px] h-full flex flex-col justify-center flex-shrink-0">
+          
+          {/* h-full, max-h-full, dan flex-col agar isi bisa merapat jika layar pendek */}
+          <div className="h-full max-h-[800px] flex flex-col bg-zinc-900/60 border border-white/10 rounded-[2.5rem] p-6 lg:p-8 backdrop-blur-xl relative overflow-hidden group hover:border-red-500/50 transition-colors duration-700 shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-amber-600/5 pointer-events-none" />
             
-            <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-600/20 text-red-500 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                <ScanLine className="w-8 h-8" />
+            {/* Header QR */}
+            <div className="relative z-10 flex flex-col items-center text-center flex-shrink-0">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-red-600/20 text-red-500 rounded-full flex items-center justify-center mb-4 lg:mb-6 animate-pulse">
+                <ScanLine className="w-6 h-6 lg:w-8 lg:h-8" />
               </div>
               
-              <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Belanja Sekarang</h2>
-              <p className="text-sm text-zinc-400 mb-8 leading-relaxed">
+              <h2 className="text-xl lg:text-2xl font-black text-white mb-2 tracking-tight">Belanja Sekarang</h2>
+              <p className="text-xs lg:text-sm text-zinc-400 mb-4 lg:mb-8 leading-relaxed line-clamp-2 md:line-clamp-none">
                 Scan kode QR ini menggunakan kamera ponsel Anda untuk membeli produk yang sedang tampil.
               </p>
+            </div>
 
-              {/* QR Code Container Dinamis */}
-              <div className="w-full aspect-square bg-white rounded-3xl p-4 shadow-[0_0_40px_rgba(220,38,38,0.2)] mb-8 transform transition-transform duration-500 group-hover:scale-105">
+            {/* QR Code Container Dinamis. Menggunakan flex-1 dan min-h-0 agar BISA MENYUSUT mengikuti tinggi layar! */}
+            <div className="relative z-10 flex-1 min-h-0 w-full flex items-center justify-center mb-4 lg:mb-8">
+              {/* Gambar dipaksa mengikuti ruang tersisa, bukan memaksakan ruang */}
+              <div className="relative w-full h-full max-w-[250px] max-h-[250px] aspect-square bg-white rounded-3xl p-3 lg:p-4 shadow-[0_0_40px_rgba(220,38,38,0.2)] transform transition-transform duration-500 group-hover:scale-105">
                 <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-dashed border-zinc-200">
                   <Image 
-                    /* MENGGUNAKAN QR DARI DATABASE (Fallback ke statis jika admin belum upload) */
                     src={coopData?.qrStoreUrl || "/qrtechnopard.png"} 
                     alt="QR Code Koperasi"
                     fill
@@ -242,10 +251,11 @@ export default function CatalogDisplayPage() {
                   />
                 </div>
               </div>
-              
-              <div className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Official Marketplace
-              </div>
+            </div>
+            
+            {/* Footer QR */}
+            <div className="relative z-10 w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] lg:text-xs font-bold uppercase tracking-widest text-zinc-300 text-center flex-shrink-0">
+              Official Marketplace
             </div>
           </div>
         </section>
