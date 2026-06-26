@@ -228,14 +228,8 @@ export default function CatalogDisplayPage() {
             
             {/* Header QR */}
             <div className="relative z-10 flex flex-col items-center text-center flex-shrink-0">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-red-600/20 text-red-500 rounded-full flex items-center justify-center mb-4 lg:mb-6 animate-pulse">
-                <ScanLine className="w-6 h-6 lg:w-8 lg:h-8" />
-              </div>
-              
-              <h2 className="text-xl lg:text-2xl font-black text-white mb-2 tracking-tight">Belanja Sekarang</h2>
-              <p className="text-xs lg:text-sm text-zinc-400 mb-4 lg:mb-8 leading-relaxed line-clamp-2 md:line-clamp-none">
-                Scan kode QR ini menggunakan kamera ponsel Anda untuk membeli produk yang sedang tampil.
-              </p>
+
+
             </div>
 
             {/* QR Code Container Dinamis. Menggunakan flex-1 dan min-h-0 agar BISA MENYUSUT mengikuti tinggi layar! */}

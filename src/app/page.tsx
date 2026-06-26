@@ -37,7 +37,7 @@ export default function LandingPage() {
               </h1>
               
               <p className="text-lg lg:text-xl text-red-50/90 mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
-                Membangun ekosistem koperasi masa depan yang modern, transparan, dan inklusif. Kami menghadirkan teknologi untuk memberdayakan potensi lokal, memperluas akses pasar, dan menciptakan kesejahteraan bersama yang berkelanjutan.
+                Membangun ekosistem koperasi / komunitas industri kreatif masa depan yang modern, transparan, dan inklusif. Kami menghadirkan teknologi untuk memberdayakan potensi lokal, memperluas akses pasar, dan menciptakan kesejahteraan bersama yang berkelanjutan.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-in fade-in slide-in-from-bottom-7 duration-1000 delay-300">
@@ -82,7 +82,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-4 bg-zinc-900 text-center text-zinc-500 text-xs border-t border-zinc-800">
         <div className="container mx-auto px-4 flex justify-between items-center">
-            <span>&copy; {new Date().getFullYear()} Koperasi Merah Putih. Hak Cipta Dilindungi.</span>
+            <span>&copy; {new Date().getFullYear()} Hak Cipta Dilindungi.</span>
             <div className="flex gap-4">
                 <Link href="#" className="hover:text-white transition-colors">Kebijakan Privasi</Link>
                 <Link href="#" className="hover:text-white transition-colors">Syarat & Ketentuan</Link>
