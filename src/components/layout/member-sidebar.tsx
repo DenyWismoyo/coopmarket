@@ -16,7 +16,8 @@ import {
   MonitorPlay,
   CreditCard,
   ExternalLink,
-  LucideIcon
+  LucideIcon,
+  QrCode
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
@@ -67,6 +68,7 @@ export function MemberSidebar() {
         { href: "/member/shop", label: "Dashboard Toko", icon: Store },
         { href: "/member/shop/products", label: "Produk Saya", icon: PackageIcon },
         { href: "/member/shop/pos", label: "Kasir / POS", icon: MonitorPlay },
+        { href: "/member/shop/qris", label: "QRIS Toko", icon: QrCode }, // <-- MENU BARU
         // Pasang Notifikasi Penjualan Toko Disini
         { href: "/member/sales", label: "Laporan Penjualan", icon: TrendingUp, hasNotification: hasMemberSales },
       ]

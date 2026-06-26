@@ -106,7 +106,7 @@ export function AdminSidebar({ isMobile }: AdminSidebarProps) {
         { href: "/admin/products", label: "Produk", icon: Package, roles: ['super_admin', 'unit_admin', 'admin'] },
         { href: "/admin/inventory", label: "Stok & Opname", icon: ClipboardList, roles: ['unit_admin', 'admin'] },
         // Pasang Notifikasi Order disini
-        { href: "/admin/orders", label: "Pesanan Online", icon: ShoppingBag, roles: ['super_admin', 'unit_admin', 'admin'], hasNotification: hasAdminOrders },
+        { href: "/admin/orders", label: "Riwayat Pesanan", icon: ShoppingBag, roles: ['super_admin', 'unit_admin', 'admin'], hasNotification: hasAdminOrders },
       ]
     },
     keuangan: {

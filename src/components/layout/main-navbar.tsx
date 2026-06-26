@@ -14,7 +14,7 @@ import {
    DropdownMenuTrigger
  } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download, Menu, Bell } from "lucide-react";
+import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download, Bell, ShoppingBag } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -75,19 +75,7 @@ export function MainNavbar() {
       <div className="w-full flex h-16 items-center justify-between px-4 md:px-8 lg:px-12">
                  
         <div className="flex items-center gap-4 md:gap-8">
-          {/* HAMBURGER MENU */}
-          <div className="md:hidden flex items-center">
-            <Button variant="ghost" size="icon" className="relative hover:bg-zinc-100">
-               <Menu className="w-6 h-6 text-zinc-900" />
-               {totalNotifications > 0 && (
-                  <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
-                  </span>
-               )}
-            </Button>
-          </div>
-
+          
           <Link href="/" className="flex items-center gap-3 font-bold text-xl text-zinc-900 group">
             <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
                 <Image 
@@ -105,6 +93,16 @@ export function MainNavbar() {
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-600">
             <Link href="/marketplace" className="hover:text-red-600 transition-colors">Belanja</Link>
             <Link href="/about" className="hover:text-red-600 transition-colors">Tentang Kami</Link>
+            
+            {/* Menu Riwayat Transaksi / Pesanan Saya (Hanya tampil jika sudah login) */}
+            {user && (
+               <Link 
+                 href={userData?.role === 'customer' ? '/orders' : '/member/orders'} 
+                 className="hover:text-red-600 transition-colors flex items-center gap-1.5"
+               >
+                 <ShoppingBag className="w-4 h-4" /> Pesanan Saya
+               </Link>
+            )}
                          
             {hasAdminAccess && (
               <Link 
@@ -212,6 +210,11 @@ export function MainNavbar() {
                 </DropdownMenuLabel>
                                  
                 <DropdownMenuSeparator />
+
+                {/* Menu Riwayat Pesanan / Transaksi di Dropdown */}
+                <DropdownMenuItem onClick={() => router.push(userData?.role === 'customer' ? '/orders' : '/member/orders')} className="cursor-pointer font-medium">
+                  <ShoppingBag className="mr-2 h-4 w-4 text-zinc-500" /> Pesanan Saya
+                </DropdownMenuItem>
                                  
                 {userData?.role === 'customer' && (
                   <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
