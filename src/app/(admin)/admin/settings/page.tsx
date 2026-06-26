@@ -1,4 +1,3 @@
-// File: src/app/admin/settings/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { toast } from "sonner";
-import { Loader2, Save, Building2, MapPin, QrCode, ScanLine, RefreshCw } from "lucide-react";
+import { Loader2, Save, Building2, MapPin, QrCode, ScanLine, RefreshCw, MonitorPlay } from "lucide-react";
 import { Cooperative } from "@/types/cooperative";
 
 export default function AdminSettingsPage() {
@@ -28,7 +27,8 @@ export default function AdminSettingsPage() {
     city: "",
     mapsUrl: "",
     qrisUrl: "",
-    qrStoreUrl: ""
+    qrStoreUrl: "",
+    promoVideoUrl: "" // [BARU] Inisialisasi state video promo
   });
 
   // Load data koperasi saat ini
@@ -48,8 +48,9 @@ export default function AdminSettingsPage() {
               city: data.city || "",
               mapsUrl: data.mapsUrl || "",
               qrisUrl: data.qrisUrl || "",
-              qrStoreUrl: data.qrStoreUrl || "" 
-            });
+              qrStoreUrl: data.qrStoreUrl || "",
+              promoVideoUrl: data.promoVideoUrl || "" // [BARU] Set data dari database
+             });
           }
         } catch (error) {
           console.error(error);
@@ -107,8 +108,9 @@ export default function AdminSettingsPage() {
         logoUrl: formData.logoUrl,
         mapsUrl: formData.mapsUrl,
         qrisUrl: formData.qrisUrl,
-        qrStoreUrl: formData.qrStoreUrl 
-      });
+        qrStoreUrl: formData.qrStoreUrl,
+        promoVideoUrl: formData.promoVideoUrl // [BARU] Simpan ke database
+       });
       toast.success("Profil koperasi berhasil diperbarui!");
     } catch (error) {
       toast.error("Gagal menyimpan perubahan");
@@ -296,6 +298,24 @@ export default function AdminSettingsPage() {
                         Paste link "Share" dari Google Maps di sini agar pelanggan mudah menemukan lokasi.
                     </p>
                 </div>
+
+                {/* [BARU] INPUT LINK VIDEO PROMO */}
+                <div className="space-y-2">
+                    <Label htmlFor="promoVideoUrl" className="flex items-center gap-2">
+                        <MonitorPlay className="w-4 h-4 text-purple-600" /> Link Video Promo (Google Drive)
+                    </Label>
+                    <Input 
+                        id="promoVideoUrl"
+                        name="promoVideoUrl"
+                        placeholder="https://drive.google.com/file/d/.../view"
+                        value={formData.promoVideoUrl}
+                        onChange={handleChange}
+                    />
+                    <p className="text-[10px] text-zinc-400">
+                        Paste link "Share" video dari Google Drive. Pastikan akses diset ke <strong>"Siapa saja yang memiliki link"</strong>.
+                    </p>
+                </div>
+
             </div>
 
             <div className="pt-6 mt-6 border-t border-zinc-100 flex justify-end">

@@ -15,6 +15,7 @@ export interface Cooperative {
   qrisUrl?: string;
   mapsUrl?: string;
   qrStoreUrl?: string; // [BARU] Field untuk QR Code Link Toko / Pameran
+  promoVideoUrl?: string; // [BARU] Field untuk Video Promo Google Drive
   
   createdAt: string;
   updatedAt: string;
