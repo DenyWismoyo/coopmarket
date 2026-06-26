@@ -55,8 +55,8 @@ function CompleteProfileForm() {
         const coops = await cooperativeService.getAllCooperatives();
         setCooperatives(coops);
       } catch (error) {
-        console.error("Gagal memuat daftar koperasi:", error);
-        toast.error("Gagal memuat daftar unit koperasi");
+        console.error("Gagal memuat daftar Unit / Organisasi:", error);
+        toast.error("Gagal memuat daftar Unit / Organisasi");
       } finally {
         setLoadingCoops(false);
       }
@@ -78,10 +78,10 @@ function CompleteProfileForm() {
     setLoading(true);
 
     try {
-      // Validasi khusus untuk anggota koperasi
+      // Validasi khusus untuk anggota Unit / Organisasi
       if (selectedRole === 'member') {
         if (formData.nik.length < 16) throw new Error("NIK harus 16 digit");
-        if (!formData.coopId) throw new Error("Silakan pilih Unit Koperasi tujuan");
+        if (!formData.coopId) throw new Error("Silakan pilih Unit / Organisasi tujuan");
       }
 
       const selectedCoop = cooperatives.find(c => c.id === formData.coopId);
@@ -137,7 +137,7 @@ function CompleteProfileForm() {
               </div>
               <div>
                 <h3 className="font-semibold text-zinc-900">Pengguna Biasa (Public)</h3>
-                <p className="text-sm text-zinc-500">Berbelanja di marketplace tanpa mendaftar keanggotaan koperasi.</p>
+                <p className="text-sm text-zinc-500">Berbelanja di marketplace tanpa mendaftar keanggotaan Unit / Organisasi.</p>
               </div>
             </div>
             <ArrowRight className="w-5 h-5 text-zinc-400" />
@@ -152,7 +152,7 @@ function CompleteProfileForm() {
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-semibold text-zinc-900">Anggota Koperasi</h3>
+                <h3 className="font-semibold text-zinc-900">Anggota Unit / Organisasi</h3>
                 <p className="text-sm text-zinc-500">Mendaftar keanggotaan untuk akses fitur penuh seperti pinjaman dan SHU.</p>
               </div>
             </div>
@@ -177,7 +177,7 @@ function CompleteProfileForm() {
         </div>
         <CardTitle className="text-2xl font-bold text-blue-700">Lengkapi Data Diri</CardTitle>
         <CardDescription>
-          Sebagai <b>{selectedRole === 'member' ? "Anggota Koperasi" : "Pengguna Biasa"}</b>, silakan lengkapi sisa informasi Anda.
+          Sebagai <b>{selectedRole === 'member' ? "Anggota Unit / Organisasi" : "Pengguna Biasa"}</b>, silakan lengkapi sisa informasi Anda.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -195,7 +195,7 @@ function CompleteProfileForm() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Input NIK hanya muncul untuk Anggota Koperasi */}
+            {/* Input NIK hanya muncul untuk Anggota Unit / Organisasi */}
             {selectedRole === 'member' && (
               <div className="space-y-2">
                 <Label htmlFor="nik">NIK (16 Digit) <span className="text-red-500">*</span></Label>
@@ -237,13 +237,13 @@ function CompleteProfileForm() {
             />
           </div>
 
-          {/* Pemilihan Unit Koperasi hanya muncul untuk Anggota Koperasi */}
+          {/* Pemilihan Unit / Organisasi hanya muncul untuk Anggota Unit / Organisasi */}
           {selectedRole === 'member' && (
             <div className="space-y-2">
-              <Label htmlFor="coopId">Pilih Unit Koperasi <span className="text-red-500">*</span></Label>
+              <Label htmlFor="coopId">Pilih Unit / Organisasi <span className="text-red-500">*</span></Label>
               <Select onValueChange={handleCoopChange} disabled={loadingCoops}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={loadingCoops ? "Memuat data..." : "Pilih Koperasi Terdekat"} />
+                  <SelectValue placeholder={loadingCoops ? "Memuat data..." : "Pilih Unit / Organisasi Terdekat"} />
                 </SelectTrigger>
                 <SelectContent>
                   {cooperatives.map((coop) => (

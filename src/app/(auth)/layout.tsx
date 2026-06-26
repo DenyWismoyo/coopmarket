@@ -20,7 +20,7 @@ export default function AuthLayout({
            <Image src="/icon.png" width={28} height={28} alt="Logo" className="object-contain" />
            <span className="text-sm font-bold text-zinc-900 tracking-tight">CoopConnect</span>
         </div>
-        <h2 className="text-xl font-semibold text-zinc-800 tracking-tight">Koperasi Merah Putih</h2>
+        
       </div>
 
       {/* Main Content (Form) */}
@@ -30,7 +30,7 @@ export default function AuthLayout({
 
       {/* Footer Sederhana */}
       <div className="mt-8 text-center text-xs text-zinc-400 z-10">
-        &copy; {new Date().getFullYear()} Koperasi Indonesia Digital. Hak Cipta Dilindungi.
+        &copy; {new Date().getFullYear()} Hak Cipta Dilindungi.
       </div>
     </div>
   );

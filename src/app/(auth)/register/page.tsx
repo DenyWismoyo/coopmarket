@@ -47,15 +47,15 @@ export default function RegisterPage() {
     coopId: "",
   });
 
-  // Fetch daftar koperasi
+  // Fetch daftar Unit / Organisasi
   useEffect(() => {
     const fetchCoops = async () => {
       try {
         const coops = await cooperativeService.getAllCooperatives();
         setCooperatives(coops);
       } catch (error) {
-        console.error("Gagal memuat daftar koperasi:", error);
-        toast.error("Gagal memuat daftar unit koperasi");
+        console.error("Gagal memuat daftar Unit / Organisasi:", error);
+        toast.error("Gagal memuat daftar unit Unit / Organisasi");
       } finally {
         setLoadingCoops(false);
       }
@@ -91,7 +91,7 @@ export default function RegisterPage() {
     try {
       // Validasi Universal
       if (formData.nik.length < 16) throw new Error("NIK harus 16 digit");
-      if (!formData.coopId) throw new Error("Silakan pilih Unit Koperasi tujuan");
+      if (!formData.coopId) throw new Error("Silakan pilih Unit / Organisasi  tujuan");
 
       const selectedCoop = cooperatives.find(c => c.id === formData.coopId);
 
@@ -157,19 +157,19 @@ export default function RegisterPage() {
           </CardTitle>
           <CardDescription>
             {isUpgradeMode 
-              ? "Lengkapi NIK dan pilih Koperasi untuk mengajukan keanggotaan Anda." 
-              : "Bergabunglah dengan Unit Koperasi pilihan Anda."}
+              ? "Lengkapi NIK dan pilih Unit / Organisasi untuk mengajukan keanggotaan Anda." 
+              : "Bergabunglah dengan Unit / Organisasi pilihan Anda."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
                          
-            {/* Pilihan Unit Koperasi - PENTING */}
+            {/* Pilihan Unit Unit / Organisasi - PENTING */}
             <div className="space-y-2">
-              <Label htmlFor="coopId">Pilih Unit Koperasi <span className="text-red-500">*</span></Label>
+              <Label htmlFor="coopId">Pilih Unit / Organisasi <span className="text-red-500">*</span></Label>
               <Select onValueChange={handleCoopChange} disabled={loadingCoops}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={loadingCoops ? "Memuat data..." : "Pilih Koperasi Terdekat"} />
+                  <SelectValue placeholder={loadingCoops ? "Memuat data..." : "Pilih Unit / Organisasi Terdekat"} />
                 </SelectTrigger>
                 <SelectContent>
                   {cooperatives.map((coop) => (
@@ -184,7 +184,7 @@ export default function RegisterPage() {
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-zinc-500">
-                Pilih unit koperasi tempat Anda akan melakukan aktivasi dan pembayaran simpanan pokok.
+                Pilih unit Unit / Organisasi tempat Anda akan melakukan aktivasi dan pembayaran simpanan pokok.
               </p>
             </div>
 

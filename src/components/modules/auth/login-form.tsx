@@ -75,7 +75,7 @@ export function LoginForm() {
     }
   };
 
-  // [BARU] Logic Google Login
+  // Logic Google Login
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
@@ -86,7 +86,7 @@ export function LoginForm() {
 
       if (!profile) {
         // Jika tidak ada di Firestore, arahkan ke onboarding
-        toast.info("Silakan lengkapi data Koperasi Anda.");
+        toast.info("Silakan lengkapi data profil Anda.");
         const params = new URLSearchParams({
           uid: user.uid,
           email: user.email || "",
@@ -111,14 +111,14 @@ export function LoginForm() {
 
     try {
       const userCredential = await authService.login(nik, passwordMember);
-      toast.success("Selamat datang kembali, Anggota!");
+      toast.success("Selamat datang kembali!");
       await routeUserBasedOnProfile(userCredential.user.uid);
     } catch (error: any) {
       console.error("Member Login Error:", error);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-        toast.error("NIK atau Password salah.");
+        toast.error("ID/NIK atau Password salah.");
       } else if (error.message.includes('tidak ditemukan')) {
-        toast.error("NIK tidak ditemukan. Silakan daftar dulu.");
+        toast.error("ID/NIK tidak ditemukan. Silakan daftar dulu.");
       } else {
         toast.error("Gagal login: " + error.message);
       }
@@ -130,7 +130,7 @@ export function LoginForm() {
     <Tabs defaultValue="public" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-6">
         <TabsTrigger value="public">Umum / Admin</TabsTrigger>
-        <TabsTrigger value="member">Anggota Koperasi</TabsTrigger>
+        <TabsTrigger value="member">Anggota / Mitra</TabsTrigger>
       </TabsList>
 
       <TabsContent value="public">
@@ -141,7 +141,7 @@ export function LoginForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             
-            {/* [BARU] Tombol Google */}
+            {/* Tombol Google */}
             <Button 
               type="button" 
               variant="outline" 
@@ -208,16 +208,16 @@ export function LoginForm() {
       <TabsContent value="member">
         <Card>
           <CardHeader>
-            <CardTitle>Login Anggota</CardTitle>
-            <CardDescription>Masuk menggunakan NIK & Password.</CardDescription>
+            <CardTitle>Login Anggota Terdaftar</CardTitle>
+            <CardDescription>Masuk menggunakan Nomor Identitas & Password.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleMemberLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nik">NIK (Nomor Induk Kependudukan)</Label>
+                <Label htmlFor="nik">ID / NIK (Nomor Induk Kependudukan)</Label>
                 <Input
                   id="nik"
-                  placeholder="16 digit NIK"
+                  placeholder="Masukkan nomor identitas"
                   value={nik}
                   onChange={(e) => setNik(e.target.value.replace(/\D/g, ''))}
                   required
@@ -227,7 +227,7 @@ export function LoginForm() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <span className="text-xs text-blue-600 cursor-pointer hover:underline" onClick={() => toast.info("Silakan hubungi Admin Unit untuk bantuan reset password.")}>
+                  <span className="text-xs text-blue-600 cursor-pointer hover:underline" onClick={() => toast.info("Silakan hubungi Administrator untuk bantuan reset password.")}>
                     Lupa?
                   </span>
                 </div>
@@ -242,7 +242,7 @@ export function LoginForm() {
                 />
               </div>
               <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : "Masuk Anggota"}
+                {loading ? <Loader2 className="animate-spin" /> : "Masuk Ke Sistem"}
               </Button>
             </form>
           </CardContent>

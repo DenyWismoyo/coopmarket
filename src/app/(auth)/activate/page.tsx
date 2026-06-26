@@ -39,14 +39,14 @@ export default function ActivatePage() {
         <CardHeader>
           <CardTitle>Aktivasi Akun Anggota</CardTitle>
           <CardDescription>
-            Khusus anggota koperasi yang sudah terdaftar secara offline.
+            Khusus anggota Unit / Organisasi yang sudah terdaftar secara offline.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {step === 1 ? (
             <form onSubmit={handleCheckNIK} className="space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md text-sm text-yellow-800 mb-4">
-                Pastikan data diri Anda sudah didaftarkan oleh Admin Unit Koperasi sebelum melakukan aktivasi.
+                Pastikan data diri Anda sudah didaftarkan oleh Admin Unit / Organisasi sebelum melakukan aktivasi.
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nik">Masukkan NIK</Label>

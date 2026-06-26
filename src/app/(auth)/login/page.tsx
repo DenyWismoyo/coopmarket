@@ -24,7 +24,7 @@ export default function LoginPage() {
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Selamat Datang</h1>
             <p className="text-zinc-500 text-sm mt-1">
-              Masuk untuk mengakses layanan koperasi digital.
+              Masuk untuk mengakses layanan Unit / Organisasi digital.
             </p>
           </div>
           

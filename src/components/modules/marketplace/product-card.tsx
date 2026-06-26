@@ -7,7 +7,7 @@ import { Product } from "@/types/product";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { Store, Package, Layers, ImageOff } from "lucide-react";
+import { Store, Package, Layers, ImageOff, User } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
@@ -72,9 +72,21 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <CardContent className="p-3">
-          {/* Info Toko */}
-          <div className="text-[10px] text-zinc-500 mb-1 flex items-center gap-1 truncate">
-            <Store className="w-3 h-3" /> {product.coopName || "Koperasi Unit"}
+          {/* Info Toko / Pemilik [DIPERBARUI DENGAN FORMAT UNIT - SELLER] */}
+          <div className="text-[10px] text-zinc-500 mb-1 flex items-center gap-1.5 truncate">
+            {product.sellerType === 'member' ? (
+                <User className="w-3 h-3 shrink-0 text-blue-500" /> 
+            ) : (
+                <Store className="w-3 h-3 shrink-0 text-green-500" />
+            )}
+            <span 
+              className="truncate font-medium text-zinc-600" 
+              title={product.sellerType === 'member' ? `${product.coopName} - ${product.sellerName}` : product.coopName}
+            >
+                {product.sellerType === 'member' && product.sellerName !== product.coopName
+                    ? `${product.coopName || "Koperasi"} - ${product.sellerName}` 
+                    : product.coopName || "Koperasi Unit"}
+            </span>
           </div>
           
           {/* Nama Produk */}

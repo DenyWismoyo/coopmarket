@@ -29,8 +29,8 @@ export default function PendingPage() {
                 <MapPin className="w-4 h-4 text-zinc-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-zinc-900">Kunjungi Kantor Koperasi</h4>
-                <p className="text-sm text-zinc-500">Datang ke unit koperasi terdekat dengan membawa KTP asli.</p>
+                <h4 className="font-semibold text-zinc-900">Kunjungi Kantor Unit / Organisasi</h4>
+                <p className="text-sm text-zinc-500">Datang ke Unit / Organisasi terdekat dengan membawa KTP asli.</p>
               </div>
             </div>
 

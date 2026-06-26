@@ -19,14 +19,15 @@ import {
   Store, 
   ShieldCheck, 
   Package,
-  Weight
+  Weight,
+  User 
 } from "lucide-react";
 
 export default function ProductDetailPage() {
   const params = useParams();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // State Interaksi
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -57,14 +58,17 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    
     if (product.hasVariants && !selectedVariant) {
       toast.error("Silakan pilih varian terlebih dahulu");
       return;
     }
+
     if (quantity > currentStock) {
         toast.error("Stok tidak mencukupi");
         return;
     }
+
     addItem(product, quantity, selectedVariant || undefined);
     toast.success("Produk masuk keranjang!");
   };
@@ -78,6 +82,7 @@ export default function ProductDetailPage() {
   };
 
   if (loading) return <div className="min-h-screen bg-white"><MainNavbar /><div className="container mx-auto py-10 px-4"><Skeleton className="h-[500px] w-full rounded-xl" /></div></div>;
+  
   if (!product) return <div className="min-h-screen bg-white flex items-center justify-center">Produk tidak ditemukan</div>;
 
   return (
@@ -96,7 +101,6 @@ export default function ProductDetailPage() {
                   alt={product.name} 
                   fill 
                   className="object-contain"
-                  // [OPTIMASI]: Prioritas tinggi untuk LCP & ukuran responsif
                   priority={true} 
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
@@ -121,7 +125,7 @@ export default function ProductDetailPage() {
                                 alt={`thumb-${idx}`} 
                                 fill 
                                 className="object-cover" 
-                                sizes="80px" // Ukuran kecil untuk thumbnail
+                                sizes="80px"
                             />
                         </button>
                     ))}
@@ -132,7 +136,7 @@ export default function ProductDetailPage() {
           {/* --- RIGHT: INFO & ACTIONS --- */}
           <div className="flex flex-col h-full">
             <div className="flex-1 space-y-6">
-                
+                 
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-2 leading-tight">{product.name}</h1>
@@ -211,21 +215,35 @@ export default function ProductDetailPage() {
                     </p>
                 </div>
 
-                {/* Info Toko */}
-                <div className="flex items-center gap-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm mt-4 hover:border-blue-200 transition-colors cursor-pointer" onClick={() => window.location.href=`/marketplace/store/${product.coopId}`}>
-                    <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center border">
-                        <Store className="w-6 h-6 text-zinc-400" />
+                {/* Info Toko / Pemilik [Telah Diperbarui, tanpa kata Koperasi] */}
+                <div 
+                  className="flex items-center gap-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm mt-4 hover:border-blue-200 transition-colors cursor-pointer" 
+                  onClick={() => window.location.href=`/marketplace/store/${product.coopId}`}
+                >
+                    <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center border shrink-0">
+                        {product.sellerType === 'member' ? (
+                            <User className="w-6 h-6 text-zinc-500" />
+                        ) : (
+                            <Store className="w-6 h-6 text-zinc-500" />
+                        )}
                     </div>
-                    <div className="flex-1">
-                        <p className="text-sm font-bold text-zinc-900">{product.coopName}</p>
-                        <p className="text-xs text-zinc-500 flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3 text-green-600" /> Official Partner Koperasi
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-zinc-900 truncate">
+                            {product.sellerName || product.coopName}
+                        </p>
+                        <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5 truncate">
+                            {product.sellerType === 'member' ? (
+                                <><ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" /> Mitra Resmi ({product.coopName})</>
+                            ) : (
+                                <><ShieldCheck className="w-3 h-3 text-green-600 shrink-0" /> Official Partner</>
+                            )}
                         </p>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-blue-600">
-                        Kunjungi
+                    <Button variant="ghost" size="sm" className="text-blue-600 shrink-0 hidden sm:flex">
+                        Kunjungi Toko
                     </Button>
                 </div>
+
             </div>
 
             {/* --- ACTION BAR (Sticky Bottom on Mobile) --- */}
@@ -262,7 +280,6 @@ export default function ProductDetailPage() {
                     </Button>
                 </div>
             </div>
-
           </div>
         </div>
       </div>
