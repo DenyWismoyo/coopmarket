@@ -1,8 +1,10 @@
+// File: src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
-import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
+import { getAnalytics, isSupported as isAnalyticsSupported, Analytics } from "firebase/analytics";
+import { getMessaging, isSupported as isMessagingSupported, Messaging } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,33 +16,23 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase (Mencegah inisialisasi ganda saat Hot Module Replacement di Next.js)
 const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Services dengan Type eksplisit
 const auth: Auth = getAuth(app);
-
-// INISIALISASI FIRESTORE DENGAN NAMED DATABASE "coopmarket"
-// Catatan: Parameter kedua pada getFirestore digunakan untuk mendefinisikan nama database.
-// Pastikan Anda benar-benar menggunakan Named Database baru di console bernama "coopmarket".
-// Jika Anda menggunakan database bawaan (default), hapus parameter "coopmarket" menjadi: getFirestore(app)
 const db: Firestore = getFirestore(app, "coopmarket");
-
 const storage: FirebaseStorage = getStorage(app);
 
-// Initialize Analytics (Hanya berjalan di client-side/browser dengan tipe yang jelas)
 let analytics: Analytics | null = null;
+let messaging: Messaging | null = null;
 
 if (typeof window !== "undefined") {
-  isSupported()
-    .then((supported) => {
-      if (supported) {
-        analytics = getAnalytics(app);
-      }
-    })
-    .catch((error) => {
-      console.error("Firebase Analytics gagal diinisialisasi:", error);
-    });
+  isAnalyticsSupported().then((supported) => {
+    if (supported) analytics = getAnalytics(app);
+  }).catch(console.error);
+
+  isMessagingSupported().then((supported) => {
+    if (supported) messaging = getMessaging(app);
+  }).catch(console.error);
 }
 
-export { app, auth, db, storage, analytics };
+export { app, auth, db, storage, analytics, messaging };
