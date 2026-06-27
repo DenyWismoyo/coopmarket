@@ -50,6 +50,26 @@ export const productService = {
     }
   },
 
+ // PUBLIC: Ambil Produk Etalase Khusus berdasarkan Seller ID (Member)
+  getPublicProductsBySeller: async (sellerId: string) => {
+    try {
+      // Filter dimasukkan langsung ke dalam query agar diizinkan oleh Firebase Rules
+      const q = query(
+        collection(db, COLLECTION),
+        where("sellerId", "==", sellerId),
+        where("marketplaceStatus", "==", "published_marketplace"),
+        where("status", "==", "active"),
+        orderBy("createdAt", "desc")
+      );
+      
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    } catch (error) {
+      console.error("Error fetching seller public products:", error);
+      return [];
+    }
+  },
+
   getAllProductsByCoopPaginated: async (coopId: string, pageSize = 20, lastDoc?: DocumentSnapshot) => {
     try {
       // Query dasar tanpa filter status != archived untuk menghindari masalah index kompleks

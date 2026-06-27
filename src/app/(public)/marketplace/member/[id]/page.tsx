@@ -21,14 +21,16 @@ export default function MemberStorePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     async function fetchData() {
       if (!params.id) return;
       try {
         const memberId = params.id as string;
-        const [memberData, allProducts] = await Promise.all([
+        
+        // PENGUBAHAN DISINI: Gunakan fungsi getPublicProductsBySeller
+        const [memberData, memberProducts] = await Promise.all([
           authService.getUserProfile(memberId),
-          productService.getPublicProducts()
+          productService.getPublicProductsBySeller(memberId) 
         ]);
 
         if (!memberData) {
@@ -37,10 +39,8 @@ export default function MemberStorePage() {
           return;
         }
 
-        const memberProducts = allProducts.data.filter(p => p.sellerId === memberId);
-
         setMember(memberData);
-        setProducts(memberProducts);
+        setProducts(memberProducts); // Langsung set produk hasil query khusus
       } catch (error) {
         console.error("Error fetching member store:", error);
         toast.error("Gagal memuat profil toko mitra");
