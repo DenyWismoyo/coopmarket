@@ -7,7 +7,7 @@ import QueryProvider from "@/lib/query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// 1. Tambahkan Viewport untuk warna browser mobile (Warna Merah sesuai tema landing page Anda)
+// 1. Tambahkan Viewport untuk warna browser mobile
 export const viewport: Viewport = {
   themeColor: "#b91c1c",
   width: "device-width",
@@ -15,11 +15,16 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-// 2. Tambahkan manifest ke Metadata
+// 2. Tambahkan manifest dan konfigurasi Ikon (Apple, Favicon, Shortcut) ke Metadata
 export const metadata: Metadata = {
   title: "CoopConnect",
   description: "Platform Digital Terintegrasi",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.png", // Ikon utama untuk tab browser
+    shortcut: "/icon.png",
+    apple: "/icon/icon-192x192.png", // Wajib agar Safari iOS memunculkan ikon saat di-Add to Home Screen
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

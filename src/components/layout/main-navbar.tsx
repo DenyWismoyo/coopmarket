@@ -5,61 +5,38 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useCartStore } from "@/lib/store/use-cart-store"; 
 import { Button } from "@/components/ui/button";
-import {
-   DropdownMenu,
-   DropdownMenuContent,
-   DropdownMenuItem,
-   DropdownMenuLabel,
-   DropdownMenuSeparator,
-   DropdownMenuTrigger
- } from "@/components/ui/dropdown-menu";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download, Bell, ShoppingBag } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CartSheet } from "@/components/layout/cart-sheet";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 
-// Import Hook Notifikasi
+// Import Hooks
 import { useNotifications } from "@/hooks/use-notifications";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 export function MainNavbar() {
   const { user, userData, loading } = useAuth();
   const totalCartItems = useCartStore((state) => state.totalItems());
   const router = useRouter();
   const [isCartOpen, setIsCartOpen] = useState(false);
-
+  
   // Panggil Data Notifikasi Realtime
   const { totalNotifications, notificationsList } = useNotifications();
 
-  // --- LOGIKA PWA INSTALL ---
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isInstallable, setIsInstallable] = useState(false);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-      setIsInstallable(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
-
-  const triggerInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") {
-      setInstallPrompt(null);
-      setIsInstallable(false);
-      toast.success("Mulai menginstal aplikasi!");
-    }
-  };
-  // --------------------------
+  // Panggil Custom Hook PWA (Jauh lebih bersih)
+  const { isInstallable, triggerInstall } = usePWAInstall();
 
   const handleLogout = async () => {
     await authService.logout();
@@ -73,23 +50,22 @@ export function MainNavbar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="w-full flex h-16 items-center justify-between px-4 md:px-8 lg:px-12">
-                 
+        
         <div className="flex items-center gap-4 md:gap-8">
-          
           <Link href="/" className="flex items-center gap-3 font-bold text-xl text-zinc-900 group">
             <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
                 <Image 
-                     src="/icon.png" 
-                     alt="KopKel Logo" 
-                     fill
+                    src="/icon.png" 
+                    alt="KopKel Logo" 
+                    fill
                     className="object-contain"
                 />
             </div>
             <div className="flex flex-col leading-none hidden sm:flex">
-                <span className="text-lg tracking-tight text-zinc-900 font-bold">CoopConnect</span>                     
+                <span className="text-lg tracking-tight text-zinc-900 font-bold">CoopConnect</span>
             </div>
           </Link>
-                     
+          
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-600">
             <Link href="/marketplace" className="hover:text-red-600 transition-colors">Belanja</Link>
             <Link href="/about" className="hover:text-red-600 transition-colors">Tentang Kami</Link>
@@ -97,17 +73,17 @@ export function MainNavbar() {
             {/* Menu Riwayat Transaksi / Pesanan Saya (Hanya tampil jika sudah login) */}
             {user && (
                <Link 
-                 href={userData?.role === 'customer' ? '/orders' : '/member/orders'} 
-                 className="hover:text-red-600 transition-colors flex items-center gap-1.5"
+                  href={userData?.role === 'customer' ? '/orders' : '/member/orders'} 
+                  className="hover:text-red-600 transition-colors flex items-center gap-1.5"
                >
                  <ShoppingBag className="w-4 h-4" /> Pesanan Saya
                </Link>
             )}
-                         
+            
             {hasAdminAccess && (
               <Link 
-                 href="/catalog-display" 
-                 className="relative inline-flex items-center gap-2 px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-white bg-gradient-to-r from-red-600 via-amber-500 to-red-600 bg-[length:200%_auto] rounded-full shadow-md shadow-red-200 transition-all duration-500 hover:bg-right hover:scale-105 border border-red-500/50 overflow-hidden animate-pulse hover:animate-none"
+                  href="/catalog-display" 
+                  className="relative inline-flex items-center gap-2 px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-white bg-gradient-to-r from-red-600 via-amber-500 to-red-600 bg-[length:200%_auto] rounded-full shadow-md shadow-red-200 transition-all duration-500 hover:bg-right hover:scale-105 border border-red-500/50 overflow-hidden animate-pulse hover:animate-none"
               >
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -121,11 +97,15 @@ export function MainNavbar() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
+          {/* Tombol Instal Aplikasi PWA */}
           {isInstallable && (
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={triggerInstall}
+              onClick={() => {
+                triggerInstall();
+                toast.success("Mulai menginstal aplikasi!");
+              }}
               className="hidden sm:flex text-red-600 border-red-200 hover:bg-red-50 transition-all duration-300"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -157,9 +137,9 @@ export function MainNavbar() {
                 ) : (
                   notificationsList.map(notif => (
                     <DropdownMenuItem 
-                      key={notif.id} 
-                      onClick={() => router.push(notif.href)} 
-                      className="cursor-pointer flex flex-col items-start gap-0.5 p-3 hover:bg-red-50"
+                       key={notif.id} 
+                       onClick={() => router.push(notif.href)} 
+                       className="cursor-pointer flex flex-col items-start gap-0.5 p-3 hover:bg-red-50"
                     >
                       <span className="font-semibold text-sm text-zinc-900">{notif.title}</span>
                       <span className="text-xs text-zinc-500">{notif.desc}</span>
@@ -171,9 +151,9 @@ export function MainNavbar() {
           )}
 
           <Button 
-             variant="ghost" 
-             size="icon" 
-             className="relative hover:bg-red-50 hover:text-red-600"
+            variant="ghost" 
+            size="icon" 
+            className="relative hover:bg-red-50 hover:text-red-600"
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="w-5 h-5" />
@@ -208,20 +188,19 @@ export function MainNavbar() {
                     </span>
                   </div>
                 </DropdownMenuLabel>
-                                 
+                
                 <DropdownMenuSeparator />
-
+                
                 {/* Menu Riwayat Pesanan / Transaksi di Dropdown */}
                 <DropdownMenuItem onClick={() => router.push(userData?.role === 'customer' ? '/orders' : '/member/orders')} className="cursor-pointer font-medium">
                   <ShoppingBag className="mr-2 h-4 w-4 text-zinc-500" /> Pesanan Saya
                 </DropdownMenuItem>
-                                 
+                
                 {userData?.role === 'customer' && (
                   <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4 text-zinc-500" /> Profil Saya
                   </DropdownMenuItem>
                 )}
-
                 {userData?.role === 'member' && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/member')} className="cursor-pointer">
@@ -232,19 +211,19 @@ export function MainNavbar() {
                     </DropdownMenuItem>
                   </>
                 )}
-                                 
+                
                 {hasAdminAccess && (
                   <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer bg-zinc-50">
                     <LayoutDashboard className="mr-2 h-4 w-4 text-zinc-500" /> Dashboard Admin
                   </DropdownMenuItem>
                 )}
-                                 
+                
                 <DropdownMenuSeparator />
-                                 
+                
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Keluar
                 </DropdownMenuItem>
-                               
+                
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -259,7 +238,7 @@ export function MainNavbar() {
           )}
         </div>
       </div>
-             
+      
       <CartSheet open={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </header>
   );
