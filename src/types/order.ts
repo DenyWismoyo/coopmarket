@@ -21,22 +21,28 @@ export type PaymentMethod =
   | 'manual_wa';
 
 // Detail Item dalam Pesanan
+// File: src/types/order.ts
+
+// Tambahkan sellerName dan sellerType di dalam OrderItem
 export interface OrderItem {
   productId: string;
   productName: string;
   price: number;
   quantity: number;
   image?: string;
-  
-  // Info Varian (Penting untuk POS & Marketplace)
-  variantName?: string | null; // Legacy support
-  variant?: {                  // Struktur baru yang detail
+  variantName?: string | null;
+  variant?: {
     id?: string;
     name: string;
     price: number;
   } | null;
-  
   sellerId: string;
+  
+  // --- TAMBAHAN BARU ---
+  sellerName?: string;
+  sellerType?: 'coop' | 'member';
+  // ---------------------
+  
   note?: string;
 }
 

@@ -226,5 +226,73 @@ export const orderService = {
       console.error("Error updating order status:", error);
       throw error;
     }
+  },
+  // =========================================
+  // 4. DATABASE MAINTENANCE & AUTO-HEAL
+  // =========================================
+  autoHealLegacyOrderItems: async (coopId: string) => {
+    try {
+      const q = query(collection(db, COLLECTION), where("coopId", "==", coopId));
+      const snapshot = await getDocs(q);
+
+      const cache: Record<string, { name: string, type: 'coop' | 'member' }> = {};
+      let updatedCount = 0;
+
+      // Helper pencari nama
+      const resolveSellerInfo = async (sellerId: string) => {
+        if (cache[sellerId]) return cache[sellerId];
+        
+        // Cek apakah ini Koperasi
+        const coopSnap = await getDoc(doc(db, "cooperatives", sellerId));
+        if (coopSnap.exists()) {
+          cache[sellerId] = { name: coopSnap.data().name, type: 'coop' };
+          return cache[sellerId];
+        }
+
+        // Cek apakah ini Anggota
+        const userSnap = await getDoc(doc(db, "users", sellerId));
+        if (userSnap.exists()) {
+          cache[sellerId] = { name: userSnap.data().fullName, type: 'member' };
+          return cache[sellerId];
+        }
+
+        // Tetap fallback jika user sudah dihapus dari sistem
+        cache[sellerId] = { name: `Anggota (ID: ${sellerId.slice(0,5)})`, type: 'member' };
+        return cache[sellerId];
+      };
+
+      // Proses setiap order
+      for (const orderDoc of snapshot.docs) {
+        const order = orderDoc.data();
+        let needsUpdate = false;
+        const newItems = [];
+
+        if (order.items && Array.isArray(order.items)) {
+          for (const item of order.items) {
+            const newItem = { ...item };
+            
+            // Jika sellerName kosong atau merupakan fallback
+            if (!newItem.sellerName || newItem.sellerName.startsWith('Anggota (ID:')) {
+               const resolved = await resolveSellerInfo(newItem.sellerId || coopId);
+               newItem.sellerName = resolved.name;
+               newItem.sellerType = resolved.type;
+               needsUpdate = true;
+            }
+            newItems.push(newItem);
+          }
+        }
+
+        // Lakukan update dokumen jika ada perubahan item
+        if (needsUpdate) {
+          await updateDoc(doc(db, COLLECTION, orderDoc.id), { items: newItems });
+          updatedCount++;
+        }
+      }
+
+      return updatedCount;
+    } catch (error) {
+      console.error("Auto heal error:", error);
+      throw error;
+    }
   }
 };

@@ -1,53 +1,75 @@
+// File: src/hooks/use-fcm.ts
 import { useEffect } from 'react';
-import { getToken } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { doc, arrayUnion, updateDoc } from 'firebase/firestore';
-import { db, messaging } from '@/lib/firebase';
-import { useAuth } from '@/components/auth/auth-provider';
+import { db, app } from '@/lib/firebase';
+import { User } from 'firebase/auth';
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY; 
 
-export function useFCM() {
-  const { user } = useAuth();
-
+export function useFCM(user: User | null) { 
   useEffect(() => {
+    // KITA TARUH LOG DI SINI (Sebelum pengecekan if)
+    console.log("[FCM Debug] Hook terpanggil. Data User:", user?.uid, "| VAPID_KEY terbaca?:", !!VAPID_KEY);
+
     const requestPermissionAndGetToken = async () => {
-      if (!user || !messaging || !VAPID_KEY) return;
+      if (!user) {
+        console.log("[FCM Debug] Dibatalkan karena user belum login (User bernilai null).");
+        return;
+      }
+      if (!VAPID_KEY) {
+        console.error("[FCM FATAL] VAPID_KEY kosong! Pastikan file .env.local sudah benar dan Anda sudah merestart server (Ctrl+C lalu npm run dev).");
+        return;
+      }
+      
+      console.log("[FCM] 1. Mencoba inisiasi untuk user:", user.uid);
 
       try {
-        // Pastikan browser mendukung Service Worker
-        if (!('serviceWorker' in navigator)) return;
+        if (!('serviceWorker' in navigator)) {
+          console.warn("[FCM] Service Worker tidak didukung di browser ini.");
+          return;
+        }
 
+        const supported = await isSupported();
+        if (!supported) {
+          console.warn("[FCM] Browser/OS ini tidak mendukung Firebase Messaging.");
+          return;
+        }
+
+        console.log("[FCM] 2. Meminta izin notifikasi ke pengguna...");
         const permission = await Notification.requestPermission();
+        console.log("[FCM] Status Izin:", permission);
+
         if (permission === 'granted') {
+          const messaging = getMessaging(app);
+          let registration = await navigator.serviceWorker.getRegistration();
           
-          // 1. Ambil pendaftaran Service Worker yang sudah dibuat oleh next-pwa
-          const registration = await navigator.serviceWorker.getRegistration();
-          
-          // Jika SW tidak ada (misal saat Anda di mode Dev (npm run dev) dan next-pwa dimatikan), batalkan.
           if (!registration) {
-             console.warn("Service Worker PWA tidak aktif. Menunda inisiasi FCM.");
-             return;
+             console.warn("[FCM] PWA Service Worker tidak ditemukan.");
           }
 
-          // 2. Beritahu Firebase untuk menggunakan SW milik next-pwa
+          console.log("[FCM] 3. Menghasilkan token...");
           const token = await getToken(messaging, { 
             vapidKey: VAPID_KEY,
-            serviceWorkerRegistration: registration 
+            serviceWorkerRegistration: registration || undefined 
           });
           
           if (token) {
+            console.log("[FCM] 4. Token didapat! Menyimpan ke Firestore...");
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
               fcmTokens: arrayUnion(token)
             });
-            console.log("FCM Token berhasil disambungkan dengan PWA Worker.");
+            console.log("[FCM] 5. SUKSES: Token tersimpan ke Firestore.");
           }
+        } else {
+          console.warn("[FCM] Pengguna menolak izin notifikasi.");
         }
       } catch (error) {
-        console.error("Error setting up FCM:", error);
+        console.error("[FCM] Error fatal saat setup FCM:", error);
       }
     };
 
     requestPermissionAndGetToken();
-  }, [user]);
+  }, [user]); 
 }

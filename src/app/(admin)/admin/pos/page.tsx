@@ -302,13 +302,19 @@ export default function POSPage() {
 
     setProcessing(true);
     try {
-      const orderItems = cart.map(item => ({
+    const orderItems = cart.map(item => ({
         productId: item.id,
         productName: item.name,
         price: item.price,
         quantity: item.qty,
         image: item.images?.[0] || item.imageUrl || "",
         sellerId: item.sellerId,
+        
+        // --- TAMBAHAN BARU ---
+        sellerName: item.sellerName, 
+        sellerType: item.sellerType,
+        // ---------------------
+
         variant: item.selectedVariant ? {
             id: item.selectedVariant.id,
             name: item.selectedVariant.name,

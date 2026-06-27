@@ -1,3 +1,4 @@
+// File: src/app/(admin)/admin/orders/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -16,7 +17,9 @@ import {
   Calendar,
   DollarSign,
   Clock,
-  Store
+  Store,
+  User,
+  Building2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -92,7 +95,7 @@ export default function AdminOrdersPage() {
   const filteredOrders = useMemo(() => {
     return orders.filter((o: any) => {
       const matchSearch = 
-        o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.sellerName?.toLowerCase().includes(searchQuery.toLowerCase());
       
@@ -267,8 +270,7 @@ export default function AdminOrdersPage() {
                <TableRow>
                  <TableHead>Order ID</TableHead>
                  <TableHead>Pembeli</TableHead>
-                 <TableHead>Penjual / Toko</TableHead>
-                 <TableHead>Tanggal</TableHead>
+                 <TableHead className="w-[300px]">Rincian Transaksi & Pemilik Produk</TableHead>
                  <TableHead>Total & Metode</TableHead>
                  <TableHead>Status</TableHead>
                  <TableHead className="text-right">Aksi</TableHead>
@@ -277,7 +279,7 @@ export default function AdminOrdersPage() {
              <TableBody>
                {filteredOrders.length === 0 ? (
                  <TableRow>
-                   <TableCell colSpan={7} className="h-32 text-center text-zinc-500">
+                   <TableCell colSpan={6} className="h-32 text-center text-zinc-500">
                       Tidak ada rekaman transaksi pada kriteria filter ini.
                    </TableCell>
                  </TableRow>
@@ -286,34 +288,79 @@ export default function AdminOrdersPage() {
                    <TableRow key={order.id} className="hover:bg-zinc-50/50">
                      <TableCell className="font-mono text-sm font-medium">
                         {order.orderNumber}
+                        <div className="text-zinc-500 text-xs mt-1 font-sans">
+                           {new Date(order.createdAt).toLocaleDateString('id-ID', {
+                              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                           })}
+                        </div>
                      </TableCell>
                      <TableCell>
                         <div className="font-medium text-zinc-900">{order.buyerName || 'Umum'}</div>
                         <div className="text-xs text-zinc-500">ID: {order.buyerId?.slice(0, 8)}...</div>
                      </TableCell>
                      
+                     {/* ========================================================== */}
+                     {/* PERBAIKAN: KOLOM PENJUAL & RINCIAN PEMILIK BARANG          */}
+                     {/* ========================================================== */}
                      <TableCell>
-                        <div className="font-medium text-zinc-900 flex items-center gap-1.5">
-                           <Store className="w-4 h-4 text-zinc-400 shrink-0" />
-                           <span className="truncate max-w-[140px]">{order.sellerName || 'Koperasi'}</span>
-                        </div>
-                        <Badge 
-                           variant="outline" 
-                           className={`text-[9px] mt-1 capitalize font-medium px-1.5 h-4 ${
-                              order.sellerType === 'member' 
-                                ? 'bg-purple-50 text-purple-700 border-purple-200' 
-                                : 'bg-teal-50 text-teal-700 border-teal-200'
-                           }`}
-                        >
-                           {order.sellerType === 'member' ? 'Anggota' : 'Koperasi'}
-                        </Badge>
-                     </TableCell>
+                        <div className="flex flex-col gap-3 py-1">
+                           {/* Info Kasir Pemroses (Root Order) */}
+                           <div className="flex flex-col items-start gap-1">
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                 Pemroses Transaksi:
+                              </span>
+                              <div className="flex items-center gap-1.5 text-zinc-900">
+                                 <Store className="w-4 h-4 text-zinc-400 shrink-0" />
+                                 <span className="font-medium text-sm truncate">{order.sellerName || 'Koperasi'}</span>
+                                 <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-medium bg-zinc-50 text-zinc-600 border-zinc-200">
+                                    Kasir Unit
+                                 </Badge>
+                              </div>
+                           </div>
 
-                     <TableCell className="text-zinc-600 text-sm">
-                        {new Date(order.createdAt).toLocaleDateString('id-ID', {
-                           day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                        })}
+                           {/* Info Detail per Produk */}
+                           <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-100">
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                 Barang yang dibeli:
+                              </span>
+                              {order.items?.map((item: any, idx: number) => {
+                                 // LOGIKA AKURAT UNTUK MENENTUKAN PEMILIK PRODUK
+                                 // Cek apakah item ini milik member (baik dari sellerType maupun dari ID yang berbeda dari root order)
+                                 const isMemberProduct = item.sellerType === 'member' || (item.sellerId && item.sellerId !== order.sellerId);
+                                 
+                                 // Ambil nama. Jika data lama kosong, gunakan fallback pintar.
+                                 let ownerName = item.sellerName;
+                                 if (!ownerName) {
+                                    ownerName = isMemberProduct ? `Anggota (ID: ${item.sellerId?.slice(0,5)})` : (order.sellerName || 'Unit Koperasi');
+                                 }
+
+                                 return (
+                                    <div key={idx} className="bg-zinc-50/80 rounded-md p-2 flex flex-col gap-1 border border-zinc-100">
+                                       <span className="text-xs font-semibold text-zinc-800 line-clamp-1">
+                                          {item.quantity}x {item.productName}
+                                       </span>
+                                       <div className="flex items-center gap-1.5 text-[10px]">
+                                          {isMemberProduct ? (
+                                             <User className="w-3 h-3 text-purple-600" />
+                                          ) : (
+                                             <Building2 className="w-3 h-3 text-teal-600" />
+                                          )}
+                                          <span className="text-zinc-500">Milik:</span>
+                                          <span className={`font-semibold ${isMemberProduct ? 'text-purple-700' : 'text-teal-700'}`}>
+                                             {ownerName}
+                                          </span>
+                                          <span className="ml-auto text-[8px] uppercase tracking-widest bg-white px-1.5 py-0.5 rounded shadow-sm border border-zinc-200">
+                                             {isMemberProduct ? 'Member' : 'Unit'}
+                                          </span>
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        </div>
                      </TableCell>
+                     {/* ========================================================== */}
+
                      <TableCell>
                         <div className="font-bold text-blue-700">{formatCurrency(order.totalAmount || order.total)}</div>
                         <div className="text-[10px] text-zinc-500 font-semibold uppercase mt-0.5">
@@ -351,23 +398,47 @@ export default function AdminOrdersPage() {
                         <div>
                            <p className="font-mono text-xs font-semibold text-zinc-400">{order.orderNumber}</p>
                            <p className="font-bold text-base text-zinc-900 mt-0.5">{order.buyerName || 'Umum'}</p>
-                           
-                           <div className="flex items-center gap-1.5 text-xs text-zinc-600 mt-1">
-                              <Store className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                              <span className="truncate font-medium text-zinc-700 max-w-[160px]">{order.sellerName || 'Koperasi'}</span>
-                              <span className={`text-[9px] rounded px-1.5 py-0.5 scale-90 border font-medium capitalize ${
-                                 order.sellerType === 'member' 
-                                   ? 'bg-purple-50 text-purple-700 border-purple-200' 
-                                   : 'bg-teal-50 text-teal-700 border-teal-200'
-                              }`}>
-                                 {order.sellerType === 'member' ? 'Anggota' : 'Unit'}
-                              </span>
-                           </div>
                         </div>
                         {getStatusBadge(order.status)}
                      </div>
                      
-                     <div className="flex justify-between items-end pt-1">
+                     {/* MOBILE: KASIR DAN RINCIAN BARANG */}
+                     <div className="pt-3 border-t border-zinc-100">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Pemroses:</span>
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-700 mt-1">
+                           <Store className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                           <span className="truncate font-medium max-w-[160px]">{order.sellerName || 'Koperasi'}</span>
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-dashed border-zinc-200 space-y-2">
+                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Daftar Barang:</span>
+                           {order.items?.map((item: any, idx: number) => {
+                              const isMemberProduct = item.sellerType === 'member' || (item.sellerId && item.sellerId !== order.sellerId);
+                              let ownerName = item.sellerName;
+                              if (!ownerName) {
+                                 ownerName = isMemberProduct ? `Anggota (${item.sellerId?.slice(0,5)})` : (order.sellerName || 'Koperasi');
+                              }
+
+                              return (
+                                 <div key={idx} className="bg-zinc-50 rounded p-2 flex flex-col gap-1 border border-zinc-100 shadow-sm">
+                                    <span className="text-xs font-semibold text-zinc-800">{item.quantity}x {item.productName}</span>
+                                    <div className="flex items-center gap-1 text-[10px]">
+                                       {isMemberProduct ? <User className="w-3 h-3 text-purple-600 shrink-0" /> : <Building2 className="w-3 h-3 text-teal-600 shrink-0" />}
+                                       <span className="text-zinc-500">Milik:</span>
+                                       <span className={`font-semibold truncate max-w-[120px] ${isMemberProduct ? 'text-purple-700' : 'text-teal-700'}`}>
+                                          {ownerName}
+                                       </span>
+                                       <span className="ml-auto text-[8px] uppercase tracking-widest bg-white px-1 py-0.5 rounded border border-zinc-200 shadow-sm">
+                                          {isMemberProduct ? 'Member' : 'Unit'}
+                                       </span>
+                                    </div>
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     </div>
+
+                     <div className="flex justify-between items-end pt-3 border-t border-zinc-100">
                         <div className="space-y-1">
                            <p className="text-xs text-zinc-500">
                               {new Date(order.createdAt).toLocaleDateString('id-ID', {

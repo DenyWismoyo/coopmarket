@@ -9,7 +9,8 @@ import {
     Wallet, Building2, CheckCircle2, UserCog, FileText, MonitorPlay,
     History, Database, TrendingDown, ClipboardList, Megaphone, FileBarChart,
     ChevronDown, ChevronRight, Store, PieChart, BarChart3, ExternalLink,
-    PanelLeftClose, PanelLeftOpen // Icon baru untuk Minimize
+    PanelLeftClose, PanelLeftOpen, // Icon baru untuk Minimize
+    TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
@@ -117,6 +118,7 @@ export function AdminSidebar({ isMobile, isMinimized, onToggleMinimize }: AdminS
       items: [
         { href: "/admin/history", label: "Riwayat Transaksi", icon: History, roles: ['super_admin', 'unit_admin', 'admin'] },
         { href: "/admin/reports", label: "Pusat Laporan", icon: FileBarChart, roles: ['super_admin', 'unit_admin', 'admin'] },
+        { href: "/admin/reports/member-traction", label: "Traksi Anggota", icon: TrendingUp, roles: ['super_admin', 'unit_admin', 'admin'] },
       ]
     }
   };
