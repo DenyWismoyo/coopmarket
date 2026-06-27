@@ -13,14 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import { 
-  ShoppingCart, 
-  Minus, 
-  Plus, 
-  Store, 
-  ShieldCheck, 
-  Package,
-  Weight,
-  User 
+   ShoppingCart, 
+   Minus, 
+   Plus, 
+   Store, 
+   ShieldCheck, 
+   Package, 
+   Weight, 
+   User,
+   Gift // [BARU] Icon untuk bundling
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -82,7 +83,6 @@ export default function ProductDetailPage() {
   };
 
   if (loading) return <div className="min-h-screen bg-white"><MainNavbar /><div className="container mx-auto py-10 px-4"><Skeleton className="h-[500px] w-full rounded-xl" /></div></div>;
-  
   if (!product) return <div className="min-h-screen bg-white flex items-center justify-center">Produk tidak ditemukan</div>;
 
   return (
@@ -97,12 +97,12 @@ export default function ProductDetailPage() {
             <div className="relative aspect-square w-full bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-100">
               {product.images && product.images.length > 0 ? (
                 <Image 
-                  src={product.images[activeImage]} 
-                  alt={product.name} 
-                  fill 
-                  className="object-contain"
-                  priority={true} 
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                   src={product.images[activeImage]} 
+                   alt={product.name} 
+                   fill 
+                   className="object-contain"
+                   priority={true} 
+                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-zinc-300">
@@ -121,11 +121,11 @@ export default function ProductDetailPage() {
                             className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${activeImage === idx ? 'border-blue-600' : 'border-transparent'}`}
                         >
                             <Image 
-                                src={img} 
-                                alt={`thumb-${idx}`} 
-                                fill 
-                                className="object-cover" 
-                                sizes="80px"
+                                 src={img} 
+                                 alt={`thumb-${idx}`} 
+                                 fill 
+                                 className="object-cover" 
+                                 sizes="80px"
                             />
                         </button>
                     ))}
@@ -136,13 +136,16 @@ export default function ProductDetailPage() {
           {/* --- RIGHT: INFO & ACTIONS --- */}
           <div className="flex flex-col h-full">
             <div className="flex-1 space-y-6">
-                 
+                  
                 {/* Header */}
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-2 leading-tight">{product.name}</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-2 leading-tight flex items-center gap-3">
+                       {product.name}
+                       {product.isBundle && <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200 tracking-widest text-[10px]">BUNDLE</Badge>}
+                    </h1>
                     <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-yellow-500 font-medium">
-                            ★ {product.rating || 0}
+                              ⭐ {product.rating || 0}
                         </div>
                         <span className="text-zinc-300">|</span>
                         <div className="text-zinc-500">Terjual {product.soldCount || 0}</div>
@@ -160,6 +163,33 @@ export default function ProductDetailPage() {
                         <p className="text-xs text-blue-500 mt-1">*Pilih varian untuk harga pas</p>
                     )}
                 </div>
+
+                {/* [BARU] Rincian Isi Paket Bundling */}
+                {product.isBundle && product.bundleItems && product.bundleItems.length > 0 && (
+                    <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-100 space-y-3">
+                        <h3 className="text-sm font-bold text-purple-900 flex items-center gap-2">
+                            <Gift className="w-4 h-4 text-purple-600" /> Isi Paket Bundling:
+                        </h3>
+                        <div className="space-y-2">
+                            {product.bundleItems.map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-purple-100 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 bg-zinc-50 rounded-md">
+                                           <Package className="w-4 h-4 text-zinc-400" />
+                                        </div>
+                                        <div>
+                                           <span className="text-sm font-medium text-zinc-800 line-clamp-1">{item.name}</span>
+                                           <span className="text-[10px] text-zinc-500">Oleh: {item.sellerName}</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md shrink-0">
+                                        {item.qty} pcs
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Variants Selector */}
                 {product.hasVariants && product.variants && (
@@ -209,16 +239,16 @@ export default function ProductDetailPage() {
 
                 {/* Deskripsi */}
                 <div className="space-y-2">
-                    <h3 className="font-semibold text-zinc-900">Deskripsi Produk</h3>
+                    <h3 className="font-semibold text-zinc-900">Deskripsi {product.isBundle ? 'Paket' : 'Produk'}</h3>
                     <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-line">
                         {product.description}
                     </p>
                 </div>
 
-                {/* Info Toko / Pemilik [Telah Diperbarui, tanpa kata Koperasi] */}
+                {/* Info Toko / Pemilik */}
                 <div 
-                  className="flex items-center gap-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm mt-4 hover:border-blue-200 transition-colors cursor-pointer" 
-                  onClick={() => window.location.href=`/marketplace/store/${product.coopId}`}
+                   className="flex items-center gap-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm mt-4 hover:border-blue-200 transition-colors cursor-pointer"
+                   onClick={() => window.location.href=`/marketplace/store/${product.coopId}`}
                 >
                     <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center border shrink-0">
                         {product.sellerType === 'member' ? (
@@ -280,6 +310,7 @@ export default function ProductDetailPage() {
                     </Button>
                 </div>
             </div>
+
           </div>
         </div>
       </div>

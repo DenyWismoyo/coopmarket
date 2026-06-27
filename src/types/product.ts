@@ -28,6 +28,14 @@ export interface Product {
   condition: 'new' | 'used'; // Baru / Bekas
   minOrder: number; // Minimal pembelian
   
+  isBundle?: boolean;
+  bundleItems?: {
+    productId: string;
+    name: string;
+    price: number;
+    qty: number;
+    sellerName: string;
+  }[];
   // Relasi Penjual
   sellerId: string;
   sellerName: string;

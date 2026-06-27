@@ -7,7 +7,7 @@ import { Product } from "@/types/product";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { Store, Package, Layers, ImageOff, User } from "lucide-react";
+import { Store, Package, Layers, ImageOff, User, Gift } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
@@ -18,7 +18,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   // Hitung harga display (Jika ada varian, ambil harga terendah)
   const displayPrice = product.hasVariants && product.variants?.length 
-    ? Math.min(...product.variants.map(v => v.price))
+    ? Math.min(...product.variants.map(v => v.price)) 
     : product.price;
 
   // Pastikan URL gambar valid
@@ -27,7 +27,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link href={`/product/${product.id}`}>
       <Card className="h-full overflow-hidden hover:shadow-lg transition-all duration-300 group border-zinc-200 hover:border-blue-200">
-        
+         
         {/* Image Container - Aspect Square */}
         <div className="relative aspect-square overflow-hidden bg-zinc-50 border-b border-zinc-100">
           {hasValidImage && !imgError ? (
@@ -38,7 +38,7 @@ export function ProductCard({ product }: ProductCardProps) {
               className="object-cover group-hover:scale-105 transition-transform duration-500"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               priority={false}
-              onError={() => setImgError(true)} // Handle jika URL gambar error/expired
+              onError={() => setImgError(true)} 
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center text-zinc-300 gap-2">
@@ -46,9 +46,16 @@ export function ProductCard({ product }: ProductCardProps) {
               {imgError && <span className="text-[10px]">Gagal memuat</span>}
             </div>
           )}
+
+          {/* [BARU] Badge Paket Bundling */}
+          {product.isBundle && (
+            <Badge className="absolute top-2 left-2 bg-purple-600 hover:bg-purple-700 h-5 px-2 text-[10px] border-0 shadow-md">
+              <Gift className="w-3 h-3 mr-1.5" /> Paket
+            </Badge>
+          )}
           
           {/* Badge Kondisi */}
-          {product.condition === 'used' && (
+          {product.condition === 'used' && !product.isBundle && (
             <Badge className="absolute top-2 right-2 bg-orange-500 hover:bg-orange-600 h-5 px-1.5 text-[10px]">
               Bekas
             </Badge>
@@ -72,7 +79,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <CardContent className="p-3">
-          {/* Info Toko / Pemilik [DIPERBARUI DENGAN FORMAT UNIT - SELLER] */}
+          {/* Info Toko / Pemilik */}
           <div className="text-[10px] text-zinc-500 mb-1 flex items-center gap-1.5 truncate">
             {product.sellerType === 'member' ? (
                 <User className="w-3 h-3 shrink-0 text-blue-500" /> 
@@ -80,8 +87,8 @@ export function ProductCard({ product }: ProductCardProps) {
                 <Store className="w-3 h-3 shrink-0 text-green-500" />
             )}
             <span 
-              className="truncate font-medium text-zinc-600" 
-              title={product.sellerType === 'member' ? `${product.coopName} - ${product.sellerName}` : product.coopName}
+               className="truncate font-medium text-zinc-600"
+               title={product.sellerType === 'member' ? `${product.coopName} - ${product.sellerName}` : product.coopName}
             >
                 {product.sellerType === 'member' && product.sellerName !== product.coopName
                     ? `${product.coopName || "Koperasi"} - ${product.sellerName}` 
@@ -105,7 +112,7 @@ export function ProductCard({ product }: ProductCardProps) {
           {/* Stats */}
           <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-400">
              <div className="flex items-center gap-0.5 text-yellow-600 bg-yellow-50 px-1 rounded">
-                <span>★</span> {product.rating || 0}
+                <span>⭐</span> {product.rating || 0}
              </div>
              <span>•</span>
              <div>Terjual {product.soldCount || 0}</div>
