@@ -31,11 +31,11 @@ export function MainNavbar() {
   const totalCartItems = useCartStore((state) => state.totalItems());
   const router = useRouter();
   const [isCartOpen, setIsCartOpen] = useState(false);
-  
+
   // Panggil Data Notifikasi Realtime
   const { totalNotifications, notificationsList } = useNotifications();
 
-  // Panggil Custom Hook PWA (Jauh lebih bersih)
+  // Panggil Custom Hook PWA
   const { isInstallable, triggerInstall } = usePWAInstall();
 
   const handleLogout = async () => {
@@ -45,6 +45,7 @@ export function MainNavbar() {
   };
 
   const getInitials = (name: string) => name?.substring(0, 2).toUpperCase() || "U";
+
   const hasAdminAccess = userData?.role && ['admin', 'super_admin', 'unit_admin'].includes(userData.role);
 
   return (
@@ -73,8 +74,8 @@ export function MainNavbar() {
             {/* Menu Riwayat Transaksi / Pesanan Saya (Hanya tampil jika sudah login) */}
             {user && (
                <Link 
-                  href={userData?.role === 'customer' ? '/orders' : '/member/orders'} 
-                  className="hover:text-red-600 transition-colors flex items-center gap-1.5"
+                   href={userData?.role === 'customer' ? '/orders' : '/member/orders'} 
+                   className="hover:text-red-600 transition-colors flex items-center gap-1.5"
                >
                  <ShoppingBag className="w-4 h-4" /> Pesanan Saya
                </Link>
@@ -97,19 +98,20 @@ export function MainNavbar() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
+          
           {/* Tombol Instal Aplikasi PWA */}
           {isInstallable && (
             <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
+               variant="outline" 
+               size="sm" 
+               onClick={() => {
                 triggerInstall();
                 toast.success("Mulai menginstal aplikasi!");
               }}
-              className="hidden sm:flex text-red-600 border-red-200 hover:bg-red-50 transition-all duration-300"
+              className="flex items-center justify-center text-red-600 border-red-200 hover:bg-red-50 transition-all duration-300 px-2 sm:px-3"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Instal App
+              <Download className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Instal App</span>
             </Button>
           )}
 
@@ -137,9 +139,9 @@ export function MainNavbar() {
                 ) : (
                   notificationsList.map(notif => (
                     <DropdownMenuItem 
-                       key={notif.id} 
-                       onClick={() => router.push(notif.href)} 
-                       className="cursor-pointer flex flex-col items-start gap-0.5 p-3 hover:bg-red-50"
+                        key={notif.id}
+                        onClick={() => router.push(notif.href)}
+                        className="cursor-pointer flex flex-col items-start gap-0.5 p-3 hover:bg-red-50"
                     >
                       <span className="font-semibold text-sm text-zinc-900">{notif.title}</span>
                       <span className="text-xs text-zinc-500">{notif.desc}</span>
@@ -151,9 +153,9 @@ export function MainNavbar() {
           )}
 
           <Button 
-            variant="ghost" 
-            size="icon" 
-            className="relative hover:bg-red-50 hover:text-red-600"
+             variant="ghost" 
+             size="icon" 
+             className="relative hover:bg-red-50 hover:text-red-600"
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="w-5 h-5" />
@@ -201,6 +203,7 @@ export function MainNavbar() {
                     <User className="mr-2 h-4 w-4 text-zinc-500" /> Profil Saya
                   </DropdownMenuItem>
                 )}
+
                 {userData?.role === 'member' && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/member')} className="cursor-pointer">
