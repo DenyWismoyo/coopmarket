@@ -12,16 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
-import { 
-   ShoppingCart, 
-   Minus, 
-   Plus, 
-   Store, 
-   ShieldCheck, 
-   Package, 
-   Weight, 
-   User,
-   Gift // [BARU] Icon untuk bundling
+import {
+    ShoppingCart,
+    Minus,
+    Plus,
+    Store,
+    ShieldCheck,
+    Package,
+    Weight,
+    User,
+    Gift
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -96,13 +96,13 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             <div className="relative aspect-square w-full bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-100">
               {product.images && product.images.length > 0 ? (
-                <Image 
-                   src={product.images[activeImage]} 
-                   alt={product.name} 
-                   fill 
-                   className="object-contain"
-                   priority={true} 
-                   sizes="(max-width: 768px) 100vw, 50vw"
+                <Image
+                    src={product.images[activeImage]}
+                    alt={product.name}
+                    fill
+                    className="object-contain"
+                   priority={true}
+                    sizes="(max-width: 768px) 100vw, 50vw"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-zinc-300">
@@ -120,12 +120,12 @@ export default function ProductDetailPage() {
                             onClick={() => setActiveImage(idx)}
                             className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${activeImage === idx ? 'border-blue-600' : 'border-transparent'}`}
                         >
-                            <Image 
-                                 src={img} 
-                                 alt={`thumb-${idx}`} 
-                                 fill 
-                                 className="object-cover" 
-                                 sizes="80px"
+                            <Image
+                                  src={img}
+                                  alt={`thumb-${idx}`}
+                                  fill
+                                  className="object-cover"
+                                  sizes="80px"
                             />
                         </button>
                     ))}
@@ -136,7 +136,7 @@ export default function ProductDetailPage() {
           {/* --- RIGHT: INFO & ACTIONS --- */}
           <div className="flex flex-col h-full">
             <div className="flex-1 space-y-6">
-                  
+                   
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-2 leading-tight flex items-center gap-3">
@@ -145,7 +145,7 @@ export default function ProductDetailPage() {
                     </h1>
                     <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-yellow-500 font-medium">
-                              ⭐ {product.rating || 0}
+                                {product.rating || 0}
                         </div>
                         <span className="text-zinc-300">|</span>
                         <div className="text-zinc-500">Terjual {product.soldCount || 0}</div>
@@ -164,7 +164,7 @@ export default function ProductDetailPage() {
                     )}
                 </div>
 
-                {/* [BARU] Rincian Isi Paket Bundling */}
+                {/* Rincian Isi Paket Bundling */}
                 {product.isBundle && product.bundleItems && product.bundleItems.length > 0 && (
                     <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-100 space-y-3">
                         <h3 className="text-sm font-bold text-purple-900 flex items-center gap-2">
@@ -246,32 +246,63 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Info Toko / Pemilik */}
-                <div 
-                   className="flex items-center gap-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm mt-4 hover:border-blue-200 transition-colors cursor-pointer"
-                   onClick={() => window.location.href=`/marketplace/store/${product.coopId}`}
-                >
-                    <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center border shrink-0">
-                        {product.sellerType === 'member' ? (
-                            <User className="w-6 h-6 text-zinc-500" />
-                        ) : (
-                            <Store className="w-6 h-6 text-zinc-500" />
-                        )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-zinc-900 truncate">
-                            {product.sellerName || product.coopName}
-                        </p>
-                        <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5 truncate">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm mt-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center border shrink-0">
                             {product.sellerType === 'member' ? (
-                                <><ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" /> Mitra Resmi ({product.coopName})</>
+                                <User className="w-6 h-6 text-zinc-500" />
                             ) : (
-                                <><ShieldCheck className="w-3 h-3 text-green-600 shrink-0" /> Official Partner</>
+                                <Store className="w-6 h-6 text-zinc-500" />
                             )}
-                        </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-zinc-900 truncate">
+                                {/* Tetap menggunakan data nama custom yang sudah kita sediakan */}
+                                {product.sellerName || product.coopName}
+                            </p>
+                            <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5 truncate">
+                                {product.sellerType === 'member' ? (
+                                    <>
+                                        <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" /> 
+                                        Mitra Resmi ({product.coopName?.replace(/Koperasi/gi, '').trim()})
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShieldCheck className="w-3 h-3 text-green-600 shrink-0" /> 
+                                        Official Partner
+                                    </>
+                                )}
+                            </p>
+                        </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-blue-600 shrink-0 hidden sm:flex">
-                        Kunjungi Toko
-                    </Button>
+                    
+                    {/* Tombol Aksi Kunjungan */}
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        {product.sellerType === 'member' && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 sm:flex-none text-zinc-600 hover:text-zinc-900 border-zinc-200"
+                                onClick={() => window.location.href = `/marketplace/store/${product.coopId}`}
+                            >
+                                <Store className="w-4 h-4 mr-1.5" /> Unit Induk
+                            </Button>
+                        )}
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="flex-1 sm:flex-none text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold"
+                            onClick={() => {
+                                if (product.sellerType === 'member') {
+                                    window.location.href = `/marketplace/member/${product.sellerId}`;
+                                } else {
+                                    window.location.href = `/marketplace/store/${product.coopId}`;
+                                }
+                            }}
+                        >
+                            Kunjungi Toko
+                        </Button>
+                    </div>
                 </div>
 
             </div>

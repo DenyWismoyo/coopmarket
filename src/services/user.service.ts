@@ -1,3 +1,4 @@
+// File: src/services/user.service.ts
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { UserProfile } from "@/types";
@@ -12,7 +13,7 @@ export const userService = {
         shopDescription: data.shopDescription,
         phone: data.phone,
         address: data.address,
-        qrisUrl: data.qrisUrl, // Mendukung penyimpanan QRIS dari menu toko jika diperlukan
+        qrisUrl: data.qrisUrl, 
         updatedAt: new Date().toISOString()
       });
       return true;
@@ -22,19 +23,22 @@ export const userService = {
     }
   },
 
-  // [BARU] Update Profil Pribadi Member
+  // Update Profil Pribadi Member
   updateUserProfile: async (uid: string, data: Partial<UserProfile>) => {
     try {
       const userRef = doc(db, "users", uid);
       
       // Filter hanya field yang diizinkan untuk update profil
-      // PENTING: qrisUrl wajib didaftarkan di sini agar bisa masuk ke database
       const safeData = {
         fullName: data.fullName,
         phone: data.phone,
         address: data.address,
         photoURL: data.photoURL,
-        qrisUrl: data.qrisUrl, // <--- PENAMBAHAN FIELD INI MENYELESAIKAN MASALAH ANDA
+        qrisUrl: data.qrisUrl, 
+        shopDescription: data.shopDescription, // [BARU] Masukkan agar tersimpan
+        instagramUrl: data.instagramUrl,       // [BARU] Masukkan agar tersimpan
+        tiktokUrl: data.tiktokUrl,             // [BARU] Masukkan agar tersimpan
+        facebookUrl: data.facebookUrl,         // [BARU] Masukkan agar tersimpan
         updatedAt: new Date().toISOString()
       };
       

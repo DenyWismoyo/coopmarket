@@ -205,7 +205,7 @@ export default function MemberShopDashboard() {
           </Link>
 
           {/* Action 3: Pengaturan */}
-          <Link href="/member/profile" className="group">
+          <Link href="/member/shop/settings" className="group">
             <div className="bg-white border border-zinc-200 rounded-2xl p-6 hover:border-zinc-400 hover:shadow-xl transition-all h-full flex flex-col items-center text-center gap-4 relative overflow-hidden">
                <div className="absolute inset-0 bg-gradient-to-br from-zinc-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                <div className="w-16 h-16 bg-zinc-100 text-zinc-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform z-10 shadow-sm">

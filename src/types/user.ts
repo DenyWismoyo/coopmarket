@@ -22,7 +22,7 @@ export interface UserProfile {
   nik?: string; 
   joinedAt?: string;
   
-  // [BARU] Saldo Teragregasi (Denormalisasi untuk performa)
+  // Saldo Teragregasi (Denormalisasi untuk performa)
   savingsPokok?: number;
   savingsWajib?: number;
   savingsSukarela?: number;
@@ -31,6 +31,9 @@ export interface UserProfile {
   shopName?: string;
   shopDescription?: string;
   qrisUrl?: string;
+  instagramUrl?: string; // [BARU]
+  tiktokUrl?: string;    // [BARU]
+  facebookUrl?: string;  // [BARU]
   
   createdAt: string;
   updatedAt: string;
