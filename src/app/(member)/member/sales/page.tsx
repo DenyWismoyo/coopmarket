@@ -3,21 +3,19 @@
 import { useState, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { DocumentSnapshot } from "firebase/firestore";
-import {
-   Loader2, Package, ShoppingCart, ChevronDown, Calendar, User, 
-   Truck, CheckCircle2, Clock, AlertCircle, TrendingUp, BarChart3
+import { 
+  Loader2, Package, ShoppingCart, ChevronDown, Calendar, User, 
+  Truck, CheckCircle2, Clock, AlertCircle, TrendingUp, BarChart3 
 } from "lucide-react";
 import { toast } from "sonner";
 import { memberService } from "@/services/member.service";
 import { orderService } from "@/services/order.service"; 
 import { useAuth } from "@/components/auth/auth-provider";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
-
-// Opsional: Jika menggunakan Framer Motion untuk transisi halus
 import { motion, AnimatePresence } from "framer-motion";
 
 type TimeFilter = 'harian' | 'mingguan' | 'bulanan' | 'semua';
@@ -26,28 +24,28 @@ export default function MemberSalesPage() {
   const { userData } = useAuth();
   const queryClient = useQueryClient();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  
-  // 1. State Filter Waktu
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('semua');
 
-  // 2. Query Agregasi: Ambil semua data order untuk kalkulasi total
+  // Query Agregasi
   const { data: allOrders, isLoading: isLoadingStats } = useQuery({
     queryKey: ['sellerTotalSales', userData?.uid],
     queryFn: async () => await orderService.getOrdersBySeller(userData!.uid),
     enabled: !!userData?.uid,
   });
 
-  // 3. Kalkulasi Dinamis berdasarkan Filter Waktu
+  // Kalkulasi Dinamis berdasarkan Filter Waktu (KHUSUS OMSET BARANG MEMBER)
   const salesStats = useMemo(() => {
     if (!allOrders) return { total: 0, count: 0 };
     const now = new Date();
     
     const filtered = allOrders.filter(order => {
-      // Kecualikan pesanan yang dibatalkan dari total omzet
-      if (order.status === 'cancelled') return false; 
+      if (order.status === 'cancelled') return false;
       
+      // Ambil barang-barang yang khusus milik member ini
+      const myItems = order.items?.filter((i: any) => i.sellerId === userData?.uid || (!i.sellerId && order.sellerId === userData?.uid)) || [];
+      if (myItems.length === 0) return false;
+
       const orderDate = new Date(order.createdAt);
-      
       if (timeFilter === 'harian') {
         return orderDate.toDateString() === now.toDateString();
       } else if (timeFilter === 'mingguan') {
@@ -55,19 +53,24 @@ export default function MemberSalesPage() {
         const diffInDays = diffInTime / (1000 * 3600 * 24);
         return diffInDays <= 7;
       } else if (timeFilter === 'bulanan') {
-        return orderDate.getMonth() === now.getMonth() && 
+        return orderDate.getMonth() === now.getMonth() &&
                orderDate.getFullYear() === now.getFullYear();
       }
       return true;
     });
 
     return {
-      total: filtered.reduce((acc, curr) => acc + curr.totalAmount, 0),
+      total: filtered.reduce((acc, order) => {
+         // Hanya hitung subtotal barang milik member
+         const myItems = order.items?.filter((i: any) => i.sellerId === userData?.uid || (!i.sellerId && order.sellerId === userData?.uid)) || [];
+         const myTotal = myItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+         return acc + myTotal;
+      }, 0),
       count: filtered.length
     };
-  }, [allOrders, timeFilter]);
+  }, [allOrders, timeFilter, userData]);
 
-  // 4. Setup Infinite Query (Kode Lama)
+  // Infinite Query
   const {
     data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading
   } = useInfiniteQuery({
@@ -87,7 +90,7 @@ export default function MemberSalesPage() {
 
   const sales = data?.pages.flatMap((page: any) => page.data) || [];
 
-  // Mutation: Update Status Pesanan (Kode Lama dipertahankan)
+  // Mutation: Update Status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
       await orderService.updateOrderStatus(id, status);
@@ -95,7 +98,7 @@ export default function MemberSalesPage() {
     onMutate: (variables) => setUpdatingId(variables.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mySales'] });
-      queryClient.invalidateQueries({ queryKey: ['sellerTotalSales'] }); // Update stats juga
+      queryClient.invalidateQueries({ queryKey: ['sellerTotalSales'] });
       toast.success("Status pesanan berhasil diperbarui!");
     },
     onError: (err: any) => toast.error("Gagal memperbarui: " + err.message),
@@ -107,7 +110,6 @@ export default function MemberSalesPage() {
       updateStatusMutation.mutate({ id, status });
   };
 
-  // Helper Functions (getStatusBadge, getStatusHelperText) dipertahankan sama...
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'completed': return <Badge className="bg-green-600">Transaksi Selesai</Badge>;
@@ -152,13 +154,12 @@ export default function MemberSalesPage() {
 
   return (
     <div className="space-y-8 pb-20 max-w-3xl mx-auto">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Penjualan Saya</h1>
         <p className="text-zinc-500 text-sm">Kelola pesanan masuk dan pantau performa toko.</p>
       </div>
 
-      {/* --- DASHBOARD STATISTIK PENJUALAN --- */}
+      {/* DASHBOARD STATISTIK PENJUALAN */}
       <Card className="relative overflow-hidden bg-zinc-900 text-white shadow-2xl shadow-zinc-200/50 border-none rounded-2xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
@@ -185,11 +186,10 @@ export default function MemberSalesPage() {
                 )}
               </div>
               <p className="text-xs text-zinc-400">
-                Dari <strong className="text-white">{salesStats.count} pesanan</strong> (tidak termasuk dibatalkan)
+                Dari <strong className="text-white">{salesStats.count} pesanan masuk</strong>
               </p>
             </div>
 
-            {/* Filter Buttons */}
             <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/10">
               {(['harian', 'mingguan', 'bulanan', 'semua'] as TimeFilter[]).map((filter) => (
                 <button
@@ -198,8 +198,8 @@ export default function MemberSalesPage() {
                   className={`
                     px-4 py-2 rounded-lg text-xs font-semibold capitalize transition-all duration-300
                     ${timeFilter === filter 
-                      ? 'bg-white text-zinc-900 shadow-sm' 
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'}
+                       ? 'bg-white text-zinc-900 shadow-sm' 
+                       : 'text-zinc-400 hover:text-white hover:bg-white/5'}
                   `}
                 >
                   {filter}
@@ -210,7 +210,6 @@ export default function MemberSalesPage() {
         </CardContent>
       </Card>
 
-      {/* Empty State */}
       {sales.length === 0 ? (
         <Card className="text-center py-16 border-dashed border-2 shadow-none bg-zinc-50/50">
            <CardContent className="flex flex-col items-center gap-4">
@@ -226,11 +225,17 @@ export default function MemberSalesPage() {
            </CardContent>
         </Card>
       ) : (
-        /* Sales List */
         <div className="space-y-6">
           <AnimatePresence>
             {sales.map((order: any) => {
               const isUpdatingThis = updatingId === order.id;
+              
+              // Filter agar UI HANYA menampilkan rincian barang milik member
+              const myItems = order.items?.filter((item: any) => item.sellerId === userData?.uid || (!item.sellerId && order.sellerId === userData?.uid)) || [];
+              const myTotalAmount = myItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+              
+              if (myItems.length === 0) return null; // Hide if no items belong to this member
+
               return (
               <motion.div 
                 key={order.id}
@@ -239,7 +244,7 @@ export default function MemberSalesPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className={`overflow-hidden transition-all duration-300 shadow-sm ${order.status === 'pending' ? 'border-orange-300 shadow-orange-100 ring-1 ring-orange-100' : 'border-zinc-200 hover:border-blue-200'}`}>
-                   {/* Konten Kartu Order Sama Seperti Sebelumnya */}
+                   
                    <CardHeader className={`pb-3 border-b px-4 py-3 ${order.status === 'pending' ? 'bg-orange-50/50' : 'bg-zinc-50/50'}`}>
                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                        <div className="flex items-center gap-2">
@@ -255,7 +260,7 @@ export default function MemberSalesPage() {
                    </CardHeader>
                    
                    <CardContent className="pt-4 px-4 pb-4 space-y-4">
-                      {/* Detail Pembeli & Nominal */}
+                      
                       <div className="flex justify-between items-center bg-white p-3 border rounded-xl shadow-sm">
                          <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
@@ -267,19 +272,19 @@ export default function MemberSalesPage() {
                             </div>
                          </div>
                          <div className="text-right">
-                            <p className="text-xs text-zinc-500 font-medium">Total Harga</p>
-                            <p className="text-lg font-extrabold text-blue-700">{formatCurrency(order.totalAmount)}</p>
+                            <p className="text-xs text-zinc-500 font-medium">Omset Anda</p>
+                            <p className="text-lg font-extrabold text-blue-700">{formatCurrency(myTotalAmount)}</p>
                          </div>
                       </div>
 
-                      {/* Ringkasan Produk */}
+                      {/* TAMPILAN BARANG HANYA MILIK MEMBER */}
                       <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 text-sm">
                          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-zinc-200">
                              <Package className="w-4 h-4 text-zinc-400" />
-                             <span className="font-semibold text-zinc-700">Daftar Barang ({order.items?.length || 0})</span>
+                             <span className="font-semibold text-zinc-700">Barang Anda yang terjual ({myItems.length})</span>
                          </div>
                          <div className="space-y-1.5">
-                             {order.items?.map((item: any, idx: number) => (
+                             {myItems.map((item: any, idx: number) => (
                                  <div key={idx} className="flex justify-between items-start text-zinc-700">
                                      <span>{item.quantity}x {item.productName} {item.variant?.name ? `(${item.variant.name})` : ''}</span>
                                      <span className="font-medium text-zinc-900">{formatCurrency(item.price * item.quantity)}</span>
@@ -288,65 +293,71 @@ export default function MemberSalesPage() {
                          </div>
                       </div>
                       
-                      {/* Petunjuk Aksi */}
                       <div className="flex items-start gap-2 bg-blue-50/50 p-3 rounded-lg text-sm text-blue-800">
                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
                          <p>{getStatusHelperText(order.status)}</p>
                       </div>
+
                    </CardContent>
 
-                   {/* ACTION BUTTONS */}
                    <CardFooter className={`px-4 py-4 flex flex-col gap-3 border-t ${order.status === 'pending' ? 'bg-orange-50' : 'bg-white'}`}>
-                      {order.status === 'pending' && (
-                         <div className="flex flex-col sm:flex-row gap-3 w-full">
-                            <Button 
-                               className="flex-1 bg-blue-600 hover:bg-blue-700 h-11 text-base font-bold transition-transform active:scale-[0.98]"
-                               onClick={() => handleUpdate(order.id, 'processing')}
-                               disabled={isUpdatingThis}
-                            >
-                               {isUpdatingThis ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5 mr-2" /> Terima Pesanan</>}
-                            </Button>
-                            
-                            <Button 
-                               variant="outline"
-                               className="sm:w-32 h-11 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-bold"
-                               onClick={() => handleUpdate(order.id, 'cancelled', 'Yakin ingin menolak pesanan ini?')}
-                               disabled={isUpdatingThis}
-                            >
-                               Tolak
-                            </Button>
+                      {/* PENTING: Tombol Aksi di Hide Jika Member Hanya Numpang Di POS Admin */}
+                      {order.sellerId === userData?.uid ? (
+                         <>
+                           {order.status === 'pending' && (
+                              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                 <Button 
+                                     className="flex-1 bg-blue-600 hover:bg-blue-700 h-11 text-base font-bold transition-transform active:scale-[0.98]"
+                                    onClick={() => handleUpdate(order.id, 'processing')}
+                                    disabled={isUpdatingThis}
+                                 >
+                                    {isUpdatingThis ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5 mr-2" /> Terima Pesanan</>}
+                                 </Button>
+                                 
+                                 <Button 
+                                     variant="outline"
+                                    className="sm:w-32 h-11 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-bold"
+                                    onClick={() => handleUpdate(order.id, 'cancelled', 'Yakin ingin menolak pesanan ini?')}
+                                    disabled={isUpdatingThis}
+                                 >
+                                    Tolak
+                                 </Button>
+                              </div>
+                           )}
+                           {order.status === 'processing' && (
+                              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                 <Button 
+                                     className="flex-1 bg-purple-600 hover:bg-purple-700 h-11 font-bold"
+                                    onClick={() => handleUpdate(order.id, 'shipped')}
+                                    disabled={isUpdatingThis}
+                                 >
+                                    {isUpdatingThis ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Truck className="w-5 h-5 mr-2" /> Kirim Barang via Kurir</>}
+                                 </Button>
+                                 <Button 
+                                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 h-11 font-bold"
+                                    onClick={() => handleUpdate(order.id, 'ready_for_pickup')}
+                                    disabled={isUpdatingThis}
+                                 >
+                                    {isUpdatingThis ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Package className="w-5 h-5 mr-2" /> Barang Siap Diambil</>}
+                                 </Button>
+                              </div>
+                           )}
+                           {(order.status === 'shipped' || order.status === 'ready_for_pickup') && (
+                               <Button 
+                                   variant="outline"
+                                  className="w-full text-green-700 border-green-200 hover:bg-green-50"
+                                  onClick={() => handleUpdate(order.id, 'completed', 'PENTING: Lanjutkan hanya jika pembeli lupa menekan tombol konfirmasi.')}
+                                  disabled={isUpdatingThis}
+                               >
+                                  {isUpdatingThis ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                  Selesaikan Secara Paksa
+                               </Button>
+                           )}
+                         </>
+                      ) : (
+                         <div className="text-center w-full">
+                            <span className="text-[10px] text-zinc-400 font-medium">Transaksi ini diproses melalui Kasir Admin Unit</span>
                          </div>
-                      )}
-
-                      {order.status === 'processing' && (
-                         <div className="flex flex-col sm:flex-row gap-3 w-full">
-                            <Button 
-                               className="flex-1 bg-purple-600 hover:bg-purple-700 h-11 font-bold"
-                               onClick={() => handleUpdate(order.id, 'shipped')}
-                               disabled={isUpdatingThis}
-                            >
-                               {isUpdatingThis ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Truck className="w-5 h-5 mr-2" /> Kirim Barang via Kurir</>}
-                            </Button>
-                            <Button 
-                               className="flex-1 bg-indigo-600 hover:bg-indigo-700 h-11 font-bold"
-                               onClick={() => handleUpdate(order.id, 'ready_for_pickup')}
-                               disabled={isUpdatingThis}
-                            >
-                               {isUpdatingThis ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Package className="w-5 h-5 mr-2" /> Barang Siap Diambil</>}
-                            </Button>
-                         </div>
-                      )}
-
-                      {(order.status === 'shipped' || order.status === 'ready_for_pickup') && (
-                          <Button 
-                             variant="outline"
-                             className="w-full text-green-700 border-green-200 hover:bg-green-50"
-                             onClick={() => handleUpdate(order.id, 'completed', 'PENTING: Lanjutkan hanya jika pembeli lupa menekan tombol konfirmasi.')}
-                             disabled={isUpdatingThis}
-                          >
-                             {isUpdatingThis ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                             Selesaikan Secara Paksa
-                          </Button>
                       )}
                    </CardFooter>
                 </Card>
@@ -358,9 +369,9 @@ export default function MemberSalesPage() {
           {hasNextPage && (
             <div className="flex justify-center pt-4">
                <Button 
-                  variant="secondary" 
-                  onClick={() => fetchNextPage()} 
-                  disabled={isFetchingNextPage}
+                   variant="secondary" 
+                   onClick={() => fetchNextPage()} 
+                   disabled={isFetchingNextPage}
                   className="shadow-sm rounded-full px-8 hover:bg-zinc-200 transition-colors"
                >
                  {isFetchingNextPage ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <ChevronDown className="w-4 h-4 mr-2"/>}

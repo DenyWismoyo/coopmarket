@@ -56,8 +56,11 @@ export default function SalesRecapPage() {
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    // Filter pesanan berdasarkan rentang waktu
+    // Filter pesanan berdasarkan rentang waktu DAN buang yang statusnya 'cancelled'
     const filteredOrders = allOrders.filter(order => {
+      // PENTING: Jangan ikutkan pesanan yang dibatalkan
+      if (order.status === 'cancelled') return false;
+        
       const orderDate = new Date(order.createdAt);
       return orderDate >= startDate;
     });
@@ -86,9 +89,9 @@ export default function SalesRecapPage() {
     const avgTrx = totalTrx > 0 ? totalOmset / totalTrx : 0;
 
     return { 
-      chartData: sortedData, 
-      metrics: { totalOmset, totalTrx, avgTrx } 
-    };
+       chartData: sortedData, 
+       metrics: { totalOmset, totalTrx, avgTrx } 
+     };
   }, [allOrders, filter]);
 
   if (loading) return <div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin text-red-600" /></div>;
@@ -204,32 +207,32 @@ export default function SalesRecapPage() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
                   <XAxis 
-                     dataKey="date" 
-                     axisLine={false} 
-                     tickLine={false} 
-                     tick={{ fill: '#a1a1aa', fontSize: 12 }} 
-                     dy={10} 
-                  />
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#a1a1aa', fontSize: 12 }}
+                      dy={10}
+                   />
                   <YAxis 
-                     axisLine={false} 
-                     tickLine={false} 
-                     tick={{ fill: '#a1a1aa', fontSize: 12 }}
-                     tickFormatter={(value) => `Rp${(value / 1000)}k`} 
-                  />
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#a1a1aa', fontSize: 12 }}
+                     tickFormatter={(value) => `Rp${(value / 1000)}k`}
+                   />
                   <Tooltip 
-                    cursor={{ stroke: '#dc2626', strokeWidth: 1, strokeDasharray: '4 4' }}
+                     cursor={{ stroke: '#dc2626', strokeWidth: 1, strokeDasharray: '4 4' }}
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e4e4e7', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                     formatter={(value: number) => [formatCurrency(value), "Omset"]}
                     labelStyle={{ color: '#09090b', fontWeight: 'bold', marginBottom: '8px' }}
                   />
                   <Area 
-                     type="monotone" 
-                     dataKey="total" 
-                     stroke="#dc2626" 
-                     strokeWidth={3}
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="#dc2626" 
+                      strokeWidth={3}
                      fillOpacity={1} 
-                     fill="url(#colorTotal)" 
-                  />
+                      fill="url(#colorTotal)" 
+                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

@@ -1,3 +1,4 @@
+// File: src/app/checkout/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, MapPin, MessageCircle, ShoppingBag, ArrowLeft, Store } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, ShoppingBag, ArrowLeft, Store, ShieldCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function CheckoutPage() {
@@ -25,52 +26,27 @@ export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCartStore();
   const [loading, setLoading] = useState(false);
 
-  // Form State
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
-  
-  // Metode pembayaran dihapus dari state, default 'manual_wa' atau sejenisnya di backend nanti
-  // Kita asumsikan 'manual' atau 'unpaid' di order service
 
-  // Load alamat dari profil user
+  const isMemberEligible = ['member', 'unit_admin', 'super_admin'].includes(userData?.role || '');
+
   useEffect(() => {
-    if (userData?.address) {
-      setAddress(userData.address);
-    }
+    if (userData?.address) setAddress(userData.address);
   }, [userData]);
 
-  // Redirect jika keranjang kosong
   useEffect(() => {
-    if (items.length === 0) {
-      router.push("/marketplace");
-    }
+    if (items.length === 0) router.push("/marketplace");
   }, [items, router]);
 
-  // --- LOGIC BIAYA ---
-  // Ongkir dihilangkan sementara (Ambil di tempat / Kesepakatan WA)
   const shippingCost = 0; 
   const grandTotal = totalPrice() + shippingCost;
 
-  // Helper: Format Pesan WhatsApp
   const createWAMessage = (order: any, orderId: string, orderNumber: string) => {
     const itemsList = order.items.map((item: any) => 
-      `- ${item.productName} (${item.quantity}x) ${item.variant ? `[${item.variant.name}]` : ''}`
+       `- ${item.productName} (${item.quantity}x) ${item.variant ? `[${item.variant.name}]` : ''}`
     ).join('\n');
-
-    return `Halo, saya ingin konfirmasi pesanan baru dari Aplikasi Koperasi:
-    
-*No. Pesanan:* ${orderNumber}
-*Pembeli:* ${order.buyerName}
-*Total:* ${formatCurrency(order.totalAmount)}
-
-*Rincian Barang:*
-${itemsList}
-
-*Alamat/Lokasi:* ${order.shippingAddress}
-
-*Catatan:* ${order.notes || '-'}
-
-Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
+    return `Halo, saya ingin konfirmasi pesanan baru dari Aplikasi Koperasi:\n\n*No. Pesanan:* ${orderNumber}\n*Pembeli:* ${order.buyerName}\n*Total:* ${formatCurrency(order.totalAmount)}\n\n*Rincian Barang:*\n${itemsList}\n\n*Alamat/Lokasi:* ${order.shippingAddress}\n*Catatan:* ${order.notes || '-'}\n\nMohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
   };
 
   const handleCheckout = async () => {
@@ -79,7 +55,6 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
       router.push("/login?redirect=/checkout");
       return;
     }
-
     if (!address.trim()) {
       toast.error("Alamat pengiriman/lokasi wajib diisi");
       return;
@@ -87,7 +62,6 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
 
     setLoading(true);
     try {
-      // 1. Group items by Seller (Split Order per Penjual)
       const ordersBySeller = items.reduce((acc, item) => {
         if (!acc[item.sellerId]) {
           acc[item.sellerId] = {
@@ -114,11 +88,9 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
       const sellerIds = Object.keys(ordersBySeller);
       let waLink = "";
 
-      // 2. Proses Setiap Order & Cari Nomor WA Penjual
       for (const sellerId of sellerIds) {
         const orderData = ordersBySeller[sellerId];
         
-        // Simpan Order ke Database
         const { id: orderId, orderNumber } = await orderService.createOrder({
           buyerId: user.uid,
           buyerName: userData?.fullName || "Pembeli",
@@ -126,14 +98,13 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
           sellerName: orderData.sellerName,
           coopId: orderData.coopId,
           items: orderData.items,
-          totalAmount: orderData.subtotal, // Tanpa ongkir
+          totalAmount: orderData.subtotal,
           shippingAddress: address,
-          paymentMethod: "manual_wa", // Set statis karena pembayaran via WA
+          paymentMethod: "manual_wa",
           status: "pending",
           notes: notes
         });
 
-        // Cari Nomor HP Penjual untuk WA Redirect
         let sellerPhone = "";
         
         if (orderData.sellerType === 'coop') {
@@ -144,14 +115,12 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
           sellerPhone = sellerProfile?.phone || "";
         }
 
-        // Format Nomor HP (08 -> 628)
         if (sellerPhone) {
-          sellerPhone = sellerPhone.replace(/\D/g, ''); // Hapus karakter non-digit
+          sellerPhone = sellerPhone.replace(/\D/g, ''); 
           if (sellerPhone.startsWith('0')) {
             sellerPhone = '62' + sellerPhone.slice(1);
           }
           
-          // Generate Link WA (Hanya untuk seller pertama jika multiple, karena redirect cuma bisa sekali)
           if (!waLink) {
             const message = encodeURIComponent(createWAMessage(
               { ...orderData, buyerName: userData?.fullName, totalAmount: orderData.subtotal, shippingAddress: address, notes },
@@ -166,14 +135,11 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
       toast.success("Pesanan berhasil dibuat!");
       clearCart();
 
-      // 3. Redirect
       if (waLink) {
-        // Redirect ke WA untuk konfirmasi
         window.open(waLink, '_blank');
-        router.push("/member/orders"); // Balik ke halaman list order
+        router.push("/orders");
       } else {
-        // Fallback jika tidak ada nomor HP
-        router.push("/member/orders");
+        router.push("/orders");
         toast.info("Silakan cek menu 'Pesanan Saya' untuk status pesanan.");
       }
       
@@ -192,19 +158,28 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
       <MainNavbar />
       
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-2xl font-bold text-zinc-900">Konfirmasi Pesanan</h1>
         </div>
 
+        {isMemberEligible && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 shadow-sm">
+                <div className="p-2 bg-green-100 rounded-full text-green-700">
+                   <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                   <p className="font-bold text-green-900 text-sm">Anda menikmati Harga Khusus Anggota!</p>
+                   <p className="text-xs text-green-700 mt-0.5">Potongan harga mitra otomatis diterapkan pada barang yang Anda beli.</p>
+                </div>
+            </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* KOLOM KIRI: Form & Items */}
+          {/* KOLOM KIRI */}
           <div className="lg:col-span-2 space-y-6">
-            
-            {/* Alamat Pengiriman */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -226,20 +201,16 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
                   <div className="space-y-2">
                     <Label>Alamat Lengkap / Lokasi COD <span className="text-red-500">*</span></Label>
                     <Textarea 
-                      placeholder="Contoh: Ambil di Kantor Koperasi Unit Solo, atau Alamat Rumah Lengkap untuk pengiriman..."
+                      placeholder="Contoh: Ambil di Kantor Koperasi, atau Alamat Rumah Lengkap..."
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="min-h-[80px]"
                     />
-                    <p className="text-xs text-zinc-500">
-                      Tuliskan alamat lengkap Anda atau keterangan "Ambil di Koperasi" jika ingin mengambil sendiri.
-                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Rincian Pesanan */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -250,9 +221,7 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
                 {items.map((item) => (
                   <div key={item.cartId} className="flex gap-4">
                     <div className="relative w-20 h-20 bg-zinc-100 rounded-lg overflow-hidden flex-shrink-0 border">
-                      {item.images?.[0] && (
-                        <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
-                      )}
+                      {item.images?.[0] && <Image src={item.images[0]} alt={item.name} fill className="object-cover" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
@@ -270,22 +239,18 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
                           Varian: {item.selectedVariant.name}
                         </p>
                       )}
-                      
                       <p className="text-sm text-zinc-500 mt-1">{item.quantity} x {formatCurrency(item.price)}</p>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
-
           </div>
 
-          {/* KOLOM KANAN: Ringkasan Biaya */}
+          {/* KOLOM KANAN */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24 shadow-lg border-t-4 border-t-green-600">
-              <CardHeader>
-                <CardTitle>Total Tagihan</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Total Tagihan</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Harga Barang</span>
@@ -300,43 +265,34 @@ Mohon info untuk pembayaran dan pengambilannya. Terima kasih.`;
                   <span className="font-bold text-lg">Total Estimasi</span>
                   <span className="font-bold text-xl text-red-600">{formatCurrency(grandTotal)}</span>
                 </div>
-
+                
                 <div className="space-y-2 pt-4">
                     <Label>Catatan Tambahan</Label>
                     <Textarea 
-                        placeholder="Pesan khusus untuk penjual..." 
-                        className="resize-none h-20 text-sm"
+                         placeholder="Pesan khusus untuk penjual..." 
+                         className="resize-none h-20 text-sm"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                     />
                 </div>
-                
-                <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-3 text-xs text-yellow-800 mt-4">
-                  <strong>Info Pembayaran:</strong> <br/>
-                  Pembayaran dilakukan secara langsung (COD/Transfer) setelah kesepakatan dengan penjual melalui WhatsApp.
-                </div>
               </CardContent>
               <CardFooter>
                 <Button 
-                    className="w-full bg-green-600 hover:bg-green-700 h-12 text-base font-bold shadow-lg shadow-green-100" 
-                    onClick={handleCheckout}
+                     className="w-full bg-green-600 hover:bg-green-700 h-12 text-base font-bold shadow-lg shadow-green-100"
+                     onClick={handleCheckout}
                     disabled={loading}
                 >
                   {loading ? (
-                    <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Memproses...
-                    </>
+                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Memproses...</>
                   ) : (
                     <div className="flex items-center">
-                        <MessageCircle className="w-5 h-5 mr-2" />
-                        Hubungi Penjual & Pesan
+                        <MessageCircle className="w-5 h-5 mr-2" /> Hubungi Penjual & Pesan
                     </div>
                   )}
                 </Button>
               </CardFooter>
             </Card>
           </div>
-
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 import { Loader2, User, Phone, MapPin, Mail, Building2, CreditCard, Lock, QrCode, Save } from "lucide-react";
 
 export default function MemberProfilePage() {
@@ -125,7 +126,20 @@ export default function MemberProfilePage() {
         <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Profil Saya</h1>
         <p className="text-zinc-500">Kelola informasi pribadi, QRIS toko, dan keamanan akun.</p>
       </div>
-
+<Card className="bg-gradient-to-br from-blue-700 to-blue-900 text-white shadow-xl overflow-hidden relative">
+   <CardContent className="p-8 flex flex-col items-center justify-center text-center">
+      <h3 className="font-black text-xl mb-1">KARTU ANGGOTA DIGITAL</h3>
+      <p className="text-blue-200 text-xs mb-6 uppercase tracking-widest">{userData?.coopName}</p>
+      
+      {/* Ini adalah Barcode KTA nya */}
+      <div className="bg-white p-3 rounded-xl shadow-inner mb-4">
+         <QRCodeSVG value={userData?.uid} size={150} level="H" />
+      </div>
+      
+      <p className="font-bold text-lg">{userData?.fullName}</p>
+      <p className="font-mono text-blue-300 text-xs mt-1">ID: {userData?.uid}</p>
+   </CardContent>
+</Card>
       <div className="grid md:grid-cols-3 gap-6">
         {/* Kolom Kiri: Kartu Identitas */}
         <Card className="md:col-span-1 h-fit shadow-sm border-zinc-200">

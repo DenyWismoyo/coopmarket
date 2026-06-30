@@ -22,7 +22,6 @@ import {
   Building2
 } from "lucide-react";
 import { toast } from "sonner";
-
 import { orderService } from "@/services/order.service";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -58,6 +57,7 @@ import { formatCurrency } from "@/lib/utils";
 export default function AdminOrdersPage() {
   const { userData } = useAuth();
   const queryClient = useQueryClient();
+
   const [searchQuery, setSearchQuery] = useState("");
   
   // Setup Default Bulan Ini (YYYY-MM)
@@ -78,6 +78,7 @@ export default function AdminOrdersPage() {
     queryKey: ['adminOrders', userData?.coopId],
     queryFn: async ({ pageParam }) => {
       if (!userData?.coopId) return { data: [], hasMore: false, lastVisible: undefined };
+      
       return await orderService.getOrdersByCoopWithPagination(
         userData.coopId, 
         50, // Mengambil entri lebih banyak agar filter bulanan client-side optimal
@@ -98,22 +99,28 @@ export default function AdminOrdersPage() {
         o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.sellerName?.toLowerCase().includes(searchQuery.toLowerCase());
-      
+        
       const orderMonth = new Date(o.createdAt).toISOString().slice(0, 7);
       const matchMonth = filterMonth === "all" || orderMonth === filterMonth;
-      
+        
       return matchSearch && matchMonth;
     });
   }, [orders, searchQuery, filterMonth]);
 
-  // Hitung Statistik Dashboard Atas
+  // Hitung Statistik Dashboard Atas (DIPERBAIKI)
   const stats = useMemo(() => {
     return filteredOrders.reduce((acc, order) => {
       acc.total += 1;
-      acc.nominal += (order.totalAmount || order.total || 0);
+      
       if (order.status === 'completed') acc.completed += 1;
       else if (order.status === 'cancelled') acc.cancelled += 1;
       else acc.active += 1;
+
+      // PENTING: Hanya tambahkan nominal jika statusnya BUKAN cancelled
+      if (order.status !== 'cancelled') {
+         acc.nominal += (order.totalAmount || order.total || 0);
+      }
+
       return acc;
     }, { total: 0, nominal: 0, completed: 0, active: 0, cancelled: 0 });
   }, [filteredOrders]);
@@ -414,6 +421,7 @@ export default function AdminOrdersPage() {
                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Daftar Barang:</span>
                            {order.items?.map((item: any, idx: number) => {
                               const isMemberProduct = item.sellerType === 'member' || (item.sellerId && item.sellerId !== order.sellerId);
+                              
                               let ownerName = item.sellerName;
                               if (!ownerName) {
                                  ownerName = isMemberProduct ? `Anggota (${item.sellerId?.slice(0,5)})` : (order.sellerName || 'Koperasi');
@@ -463,7 +471,6 @@ export default function AdminOrdersPage() {
                ))
             )}
          </div>
-
       </Card>
       
       {/* Pagination Load More */}
@@ -520,7 +527,7 @@ function OrderActionMenu({ order, updateStatusMutation }: { order: any, updateSt
         <DropdownMenuSeparator />
         
         <DropdownMenuItem 
-           className="text-red-600 focus:text-red-600 focus:bg-red-50"
+            className="text-red-600 focus:text-red-600 focus:bg-red-50"
            onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'cancelled' })}
         >
            <XCircle className="w-4 h-4 mr-2" /> Batalkan Transaksi

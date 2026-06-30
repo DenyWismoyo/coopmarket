@@ -25,7 +25,6 @@ export const orderService = {
   // =========================================
   // 1. CREATE ORDER (POS & ONLINE)
   // =========================================
-  
   createOrder: async (orderData: Partial<Order>) => {
     try {
       const date = new Date();
@@ -38,7 +37,6 @@ export const orderService = {
       const initialPayment = isPOS ? 'paid' : 'unpaid';
 
       await runTransaction(db, async (transaction) => {
-        // --- STEP 1: READ ALL ---
         const productReads: { ref: DocumentReference, doc: DocumentSnapshot, item: any }[] = [];
 
         if (orderData.items && orderData.items.length > 0) {
@@ -50,7 +48,6 @@ export const orderService = {
           }
         }
 
-        // --- STEP 2: VALIDATE ---
         for (const read of productReads) {
             const { doc, item } = read;
             if (!doc.exists()) throw new Error(`Produk ID ${item.productId} tidak ditemukan.`);
@@ -68,12 +65,17 @@ export const orderService = {
             }
         }
 
-        // --- STEP 3: WRITE ALL ---
         const newOrderRef = doc(collection(db, COLLECTION));
         const cleanOrderData = JSON.parse(JSON.stringify(orderData));
 
+        // [BARU] Kumpulkan semua pihak yang terlibat dalam transaksi ini
+        const sellerIds = cleanOrderData.items?.map((item: any) => item.sellerId).filter(Boolean) || [];
+        if (cleanOrderData.sellerId) sellerIds.push(cleanOrderData.sellerId);
+        const participatingSellerIds = [...new Set(sellerIds)];
+
         transaction.set(newOrderRef, {
           ...cleanOrderData,
+          participatingSellerIds, // Menyimpan array ID pemilik
           orderNumber,
           status: initialStatus,
           paymentStatus: initialPayment,
@@ -113,9 +115,8 @@ export const orderService = {
   },
 
   // =========================================
-  // 2. READ ORDERS (Pagination Support)
+  // 2. READ ORDERS
   // =========================================
-
   getOrderById: async (orderId: string) => {
     try {
       const docRef = doc(db, COLLECTION, orderId);
@@ -125,7 +126,6 @@ export const orderService = {
       }
       return null;
     } catch (error) {
-      console.error("Error fetching order detail:", error);
       return null;
     }
   },
@@ -136,14 +136,14 @@ export const orderService = {
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     } catch (error) {
-      console.error("Error fetching my orders:", error);
       return [];
     }
   },
 
   getOrdersBySeller: async (sellerId: string) => {
     try {
-      const q = query(collection(db, COLLECTION), where("sellerId", "==", sellerId), orderBy("createdAt", "desc"));
+      // [PERBAIKAN] Menggunakan array-contains untuk mencari order yang menyertakan produk member
+      const q = query(collection(db, COLLECTION), where("participatingSellerIds", "array-contains", sellerId), orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     } catch (error) {
@@ -152,7 +152,6 @@ export const orderService = {
     }
   },
 
-  // [UPDATED] Mendukung Pagination untuk Admin History
   getOrdersByCoopWithPagination: async (coopId: string, pageSize: number = 20, lastDoc?: DocumentSnapshot) => {
     try {
       let q = query(
@@ -175,19 +174,16 @@ export const orderService = {
         hasMore: snapshot.docs.length === pageSize
       };
     } catch (error) {
-      console.error("Error fetching coop orders:", error);
       return { data: [], lastVisible: undefined, hasMore: false };
     }
   },
   
-  // Legacy support (jika masih ada yang pakai direct fetch all)
   getOrdersByCoop: async (coopId: string) => {
      try {
       const q = query(collection(db, COLLECTION), where("coopId", "==", coopId), orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     } catch (error) {
-      console.error("Error fetching coop orders:", error);
       return [];
     }
   },
@@ -195,8 +191,7 @@ export const orderService = {
   // =========================================
   // 3. UPDATE & STATUS
   // =========================================
-
-  updateOrderStatus: async (orderId: string, status: string, notes?: string) => {
+  updateOrderStatus: async (orderId: string, status: string, notes?: string, adminId: string = "system") => {
     try {
       await runTransaction(db, async (transaction) => {
         const orderRef = doc(db, COLLECTION, orderId);
@@ -205,10 +200,21 @@ export const orderService = {
         if (!orderDoc.exists()) throw new Error("Order tidak ditemukan");
         const orderData = orderDoc.data() as Order;
 
-        // Rollback stok jika cancel
-        if (status === 'cancelled' && orderData.status !== 'cancelled') {
-             // ... logic rollback (sama seperti sebelumnya) ...
-             // (Disingkat agar tidak terlalu panjang, logika sama seperti sebelumnya)
+        const isCancelling = status === 'cancelled' && orderData.status !== 'cancelled';
+        const hasDeductedStock = orderData.isOffline || 
+                                 ['processing', 'shipped', 'ready_for_pickup', 'completed'].includes(orderData.status) || 
+                                 orderData.paymentStatus === 'paid';
+        
+        const shouldRollbackStock = isCancelling && hasDeductedStock;
+        const productReads: { ref: DocumentReference, doc: DocumentSnapshot, item: any }[] = [];
+
+        if (shouldRollbackStock && orderData.items && orderData.items.length > 0) {
+          for (const item of orderData.items) {
+            if (!item.productId) continue;
+            const productRef = doc(db, "products", item.productId);
+            const productDoc = await transaction.get(productRef);
+            productReads.push({ ref: productRef, doc: productDoc, item: item });
+          }
         }
 
         const updateData: any = {
@@ -220,13 +226,59 @@ export const orderService = {
         if (notes) updateData.notes = notes;
 
         transaction.update(orderRef, updateData);
+
+        if (shouldRollbackStock) {
+          for (const read of productReads) {
+            const { ref, doc: pDoc, item } = read;
+            if (!pDoc.exists()) continue;
+
+            const productData = pDoc.data();
+            let currentStock = productData.stock || 0;
+            let newTotalStock = currentStock + item.quantity;
+
+            if (item.variant && item.variant.id && productData?.variants) {
+                const updatedVariants = productData.variants.map((v: any) => {
+                    if (v.id === item.variant?.id) {
+                        return { ...v, stock: v.stock + item.quantity };
+                    }
+                    return v;
+                });
+                newTotalStock = updatedVariants.reduce((acc: number, v: any) => acc + v.stock, 0);
+                transaction.update(ref, { 
+                  variants: updatedVariants, 
+                  stock: newTotalStock, 
+                  soldCount: increment(-item.quantity) 
+                });
+            } else {
+                transaction.update(ref, { 
+                  stock: increment(item.quantity), 
+                  soldCount: increment(-item.quantity) 
+                });
+            }
+
+            const movementRef = doc(collection(db, "stock_movements"));
+            transaction.set(movementRef, {
+              coopId: orderData.coopId,
+              productId: item.productId,
+              productName: item.productName,
+              type: 'return',
+              quantity: item.quantity,
+              previousStock: currentStock,
+              newStock: newTotalStock,
+              referenceId: orderData.orderNumber || orderId,
+              reason: `Pembatalan pesanan ${orderData.orderNumber || orderId}`,
+              performedBy: adminId,
+              createdAt: new Date().toISOString()
+            });
+          }
+        }
       });
       return true;
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message || "Gagal mengupdate status pesanan");
     }
   },
+
   // =========================================
   // 4. DATABASE MAINTENANCE & AUTO-HEAL
   // =========================================
@@ -238,30 +290,25 @@ export const orderService = {
       const cache: Record<string, { name: string, type: 'coop' | 'member' }> = {};
       let updatedCount = 0;
 
-      // Helper pencari nama
       const resolveSellerInfo = async (sellerId: string) => {
         if (cache[sellerId]) return cache[sellerId];
         
-        // Cek apakah ini Koperasi
         const coopSnap = await getDoc(doc(db, "cooperatives", sellerId));
         if (coopSnap.exists()) {
           cache[sellerId] = { name: coopSnap.data().name, type: 'coop' };
           return cache[sellerId];
         }
 
-        // Cek apakah ini Anggota
         const userSnap = await getDoc(doc(db, "users", sellerId));
         if (userSnap.exists()) {
           cache[sellerId] = { name: userSnap.data().fullName, type: 'member' };
           return cache[sellerId];
         }
 
-        // Tetap fallback jika user sudah dihapus dari sistem
         cache[sellerId] = { name: `Anggota (ID: ${sellerId.slice(0,5)})`, type: 'member' };
         return cache[sellerId];
       };
 
-      // Proses setiap order
       for (const orderDoc of snapshot.docs) {
         const order = orderDoc.data();
         let needsUpdate = false;
@@ -271,7 +318,6 @@ export const orderService = {
           for (const item of order.items) {
             const newItem = { ...item };
             
-            // Jika sellerName kosong atau merupakan fallback
             if (!newItem.sellerName || newItem.sellerName.startsWith('Anggota (ID:')) {
                const resolved = await resolveSellerInfo(newItem.sellerId || coopId);
                newItem.sellerName = resolved.name;
@@ -282,9 +328,20 @@ export const orderService = {
           }
         }
 
-        // Lakukan update dokumen jika ada perubahan item
+        // [BARU] Pastikan array participatingSellerIds terisi di data lama
+        let participatingSellerIds = order.participatingSellerIds || [];
+        if (!order.participatingSellerIds || order.participatingSellerIds.length === 0) {
+           const allSellers = newItems.map((i: any) => i.sellerId).filter(Boolean);
+           if (order.sellerId) allSellers.push(order.sellerId);
+           participatingSellerIds = [...new Set(allSellers)];
+           needsUpdate = true;
+        }
+
         if (needsUpdate) {
-          await updateDoc(doc(db, COLLECTION, orderDoc.id), { items: newItems });
+          await updateDoc(doc(db, COLLECTION, orderDoc.id), { 
+             items: newItems,
+             participatingSellerIds
+          });
           updatedCount++;
         }
       }

@@ -1,3 +1,4 @@
+// File: src/app/product/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/components/auth/auth-provider"; // <--- TAMBAHAN
 import {
     ShoppingCart,
     Minus,
@@ -26,15 +28,18 @@ import {
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const [product, setProduct] = useState<Product | null>(null);
+  const { userData } = useAuth(); // <--- TAMBAHAN
+  const [product, setProduct] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // State Interaksi
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
 
   const addItem = useCartStore((state) => state.addItem);
+
+  // Cek Hak Akses Harga Anggota
+  const isMemberEligible = ['member', 'unit_admin', 'super_admin'].includes(userData?.role || '');
 
   useEffect(() => {
     async function fetchProduct() {
@@ -53,9 +58,16 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [params.id]);
 
-  const currentPrice = selectedVariant ? selectedVariant.price : (product?.price || 0);
+  // Logika Harga Bertingkat
+  const basePublicPrice = selectedVariant ? selectedVariant.price : (product?.price || 0);
+  const baseMemberPrice = selectedVariant 
+     ? (selectedVariant.memberPrice || selectedVariant.price) 
+     : (product?.memberPrice || product?.price || 0);
+
+  const activePrice = isMemberEligible ? baseMemberPrice : basePublicPrice;
   const currentStock = selectedVariant ? selectedVariant.stock : (product?.stock || 0);
   const isOutOfStock = currentStock <= 0;
+  const hasDiscount = isMemberEligible && baseMemberPrice < basePublicPrice;
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -64,13 +76,16 @@ export default function ProductDetailPage() {
       toast.error("Silakan pilih varian terlebih dahulu");
       return;
     }
-
     if (quantity > currentStock) {
         toast.error("Stok tidak mencukupi");
         return;
     }
 
-    addItem(product, quantity, selectedVariant || undefined);
+    // PENTING: Timpa harga dengan activePrice sebelum masuk keranjang
+    const productToCart = { ...product, price: activePrice };
+    const variantToCart = selectedVariant ? { ...selectedVariant, price: activePrice } : undefined;
+
+    addItem(productToCart as Product, quantity, variantToCart as ProductVariant | undefined);
     toast.success("Produk masuk keranjang!");
   };
 
@@ -111,22 +126,15 @@ export default function ProductDetailPage() {
               )}
             </div>
             
-            {/* Thumbnails */}
             {product.images && product.images.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                    {product.images.map((img, idx) => (
+                    {product.images.map((img: string, idx: number) => (
                         <button 
                             key={idx}
                             onClick={() => setActiveImage(idx)}
                             className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${activeImage === idx ? 'border-blue-600' : 'border-transparent'}`}
                         >
-                            <Image
-                                  src={img}
-                                  alt={`thumb-${idx}`}
-                                  fill
-                                  className="object-cover"
-                                  sizes="80px"
-                            />
+                            <Image src={img} alt={`thumb-${idx}`} fill className="object-cover" sizes="80px" />
                         </button>
                     ))}
                 </div>
@@ -136,7 +144,7 @@ export default function ProductDetailPage() {
           {/* --- RIGHT: INFO & ACTIONS --- */}
           <div className="flex flex-col h-full">
             <div className="flex-1 space-y-6">
-                   
+                
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-2 leading-tight flex items-center gap-3">
@@ -145,7 +153,7 @@ export default function ProductDetailPage() {
                     </h1>
                     <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-yellow-500 font-medium">
-                                {product.rating || 0}
+                           ⭐ {product.rating || 0}
                         </div>
                         <span className="text-zinc-300">|</span>
                         <div className="text-zinc-500">Terjual {product.soldCount || 0}</div>
@@ -154,10 +162,16 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
 
-                {/* Price */}
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-3xl font-bold text-blue-700">
-                        {formatCurrency(currentPrice)}
+                {/* Price Display */}
+                <div className={`p-4 rounded-xl border ${hasDiscount ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100'}`}>
+                    {hasDiscount && (
+                       <div className="flex items-center gap-2 mb-1">
+                          <Badge className="bg-green-600 hover:bg-green-700 text-[10px] border-0">Harga Anggota</Badge>
+                          <span className="text-xs text-zinc-400 line-through decoration-red-400">{formatCurrency(basePublicPrice)}</span>
+                       </div>
+                    )}
+                    <p className={`text-3xl font-bold ${hasDiscount ? 'text-green-700' : 'text-blue-700'}`}>
+                        {formatCurrency(activePrice)}
                     </p>
                     {product.hasVariants && !selectedVariant && (
                         <p className="text-xs text-blue-500 mt-1">*Pilih varian untuk harga pas</p>
@@ -171,7 +185,7 @@ export default function ProductDetailPage() {
                             <Gift className="w-4 h-4 text-purple-600" /> Isi Paket Bundling:
                         </h3>
                         <div className="space-y-2">
-                            {product.bundleItems.map((item, idx) => (
+                            {product.bundleItems.map((item: any, idx: number) => (
                                 <div key={idx} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-purple-100 shadow-sm">
                                     <div className="flex items-center gap-3">
                                         <div className="p-1.5 bg-zinc-50 rounded-md">
@@ -196,7 +210,9 @@ export default function ProductDetailPage() {
                     <div className="space-y-3">
                         <label className="text-sm font-semibold text-zinc-900">Pilih Varian:</label>
                         <div className="flex flex-wrap gap-2">
-                            {product.variants.map((variant) => (
+                            {product.variants.map((variant: any) => {
+                                const vPrice = isMemberEligible ? (variant.memberPrice || variant.price) : variant.price;
+                                return (
                                 <button
                                     key={variant.id}
                                     onClick={() => {
@@ -210,9 +226,10 @@ export default function ProductDetailPage() {
                                     } ${variant.stock <= 0 ? "opacity-50 cursor-not-allowed bg-zinc-100" : ""}`}
                                     disabled={variant.stock <= 0}
                                 >
-                                    {variant.name}
+                                    {variant.name} 
                                 </button>
-                            ))}
+                                )
+                            })}
                         </div>
                     </div>
                 )}
@@ -257,26 +274,24 @@ export default function ProductDetailPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-zinc-900 truncate">
-                                {/* Tetap menggunakan data nama custom yang sudah kita sediakan */}
                                 {product.sellerName || product.coopName}
                             </p>
                             <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5 truncate">
                                 {product.sellerType === 'member' ? (
                                     <>
                                         <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" /> 
-                                        Mitra Resmi ({product.coopName?.replace(/Koperasi/gi, '').trim()})
+                                         Mitra Resmi ({product.coopName?.replace(/Koperasi/gi, '').trim()})
                                     </>
                                 ) : (
                                     <>
                                         <ShieldCheck className="w-3 h-3 text-green-600 shrink-0" /> 
-                                        Official Partner
+                                         Official Partner
                                     </>
                                 )}
                             </p>
                         </div>
                     </div>
                     
-                    {/* Tombol Aksi Kunjungan */}
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         {product.sellerType === 'member' && (
                             <Button 
@@ -310,8 +325,6 @@ export default function ProductDetailPage() {
             {/* --- ACTION BAR (Sticky Bottom on Mobile) --- */}
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-zinc-200 md:static md:p-0 md:border-0 md:bg-transparent md:mt-8 z-50">
                 <div className="container mx-auto flex gap-4 items-center max-w-5xl">
-                    
-                    {/* Quantity */}
                     <div className="flex items-center gap-3 bg-zinc-100 rounded-xl px-3 py-2 border border-zinc-200">
                         <button 
                             onClick={() => handleQuantityChange('minus')}
@@ -330,7 +343,6 @@ export default function ProductDetailPage() {
                         </button>
                     </div>
 
-                    {/* Add to Cart */}
                     <Button 
                         className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-base shadow-lg shadow-blue-100 rounded-xl"
                         onClick={handleAddToCart}

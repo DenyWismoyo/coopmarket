@@ -240,9 +240,10 @@ export const memberService = {
     } catch (error) { return { data: [], lastVisible: undefined, hasMore: false }; }
   },
 
-  getMySales: async (userId: string) => { /* Legacy */
+getMySales: async (userId: string) => { /* Legacy */
     try {
-      const q = query(collection(db, "orders"), where("sellerId", "==", userId), orderBy("createdAt", "desc"));
+      // [PERBAIKAN] Menggunakan array-contains
+      const q = query(collection(db, "orders"), where("participatingSellerIds", "array-contains", userId), orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
     } catch (error) { return []; }
@@ -250,15 +251,18 @@ export const memberService = {
 
   getMySalesPaginated: async (userId: string, pageSize = 10, lastDoc?: DocumentSnapshot) => {
     try {
+      // [PERBAIKAN] Menggunakan array-contains
       let q = query(
         collection(db, "orders"),
-        where("sellerId", "==", userId),
+        where("participatingSellerIds", "array-contains", userId),
         orderBy("createdAt", "desc"),
         limit(pageSize)
       );
+
       if (lastDoc) q = query(q, startAfter(lastDoc));
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
       return { data, lastVisible: snapshot.docs[snapshot.docs.length - 1], hasMore: snapshot.docs.length === pageSize };
     } catch (error) { return { data: [], lastVisible: undefined, hasMore: false }; }
   },

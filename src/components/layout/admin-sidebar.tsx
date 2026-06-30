@@ -10,7 +10,8 @@ import {
     Wallet, Building2, CheckCircle2, UserCog, FileText, MonitorPlay,
     History, Database, TrendingDown, ClipboardList, Megaphone, FileBarChart,
     ChevronDown, ChevronRight, Store, PieChart, BarChart3, ExternalLink,
-    TrendingUp
+    TrendingUp,
+    Coins
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ export function AdminSidebar({ isMobile }: AdminSidebarProps) {
         { href: "/admin/savings", label: "Input Simpanan", icon: Wallet, roles: ['unit_admin', 'admin'] },
         { href: "/admin/expenses", label: "Pengeluaran", icon: TrendingDown, roles: ['unit_admin', 'admin'] },
         { href: "/admin/shu", label: "Laporan SHU", icon: FileText, roles: ['super_admin', 'unit_admin'] },
+        { href: "/admin/cash-flow", label: "Buku Kas", icon: Coins, roles: ['super_admin', 'unit_admin'] },
       ]
     },
     anggota: {
