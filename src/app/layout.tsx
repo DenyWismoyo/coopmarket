@@ -7,23 +7,24 @@ import QueryProvider from "@/lib/query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// 1. Tambahkan Viewport untuk warna browser mobile
+// [PERBAIKAN MOBILE]: Tambahkan viewport-fit=cover untuk layar poni/bezel-less
 export const viewport: Viewport = {
   themeColor: "#b91c1c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false, // Mencegah zoom saat input text di iOS
+  viewportFit: "cover", // Mendukung Safe Area Inset
 };
 
-// 2. Tambahkan manifest dan konfigurasi Ikon (Apple, Favicon, Shortcut) ke Metadata
 export const metadata: Metadata = {
   title: "CoopConnect",
   description: "Platform Digital Terintegrasi",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.png", // Ikon utama untuk tab browser
+    icon: "/icon.png",
     shortcut: "/icon.png",
-    apple: "/icon/icon-192x192.png", // Wajib agar Safari iOS memunculkan ikon saat di-Add to Home Screen
+    apple: "/icon/icon-192x192.png",
   },
   appleWebApp: {
     capable: true,
@@ -39,11 +40,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body className={inter.className}>
+      <body className={`${inter.className} antialiased bg-zinc-50/50`}>
         <QueryProvider>
           <AuthProvider>
             {children}
-            <Toaster position="top-center" />
+            <Toaster position="top-center" richColors />
           </AuthProvider>
         </QueryProvider>
       </body>
