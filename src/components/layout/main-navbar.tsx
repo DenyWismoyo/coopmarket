@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download, Bell, ShoppingBag, Home, Search } from "lucide-react";
+import { ShoppingCart, LogOut, User, Store, LayoutDashboard, MonitorPlay, Download, Bell, ShoppingBag, Home, Building2, PlusCircle, Clock } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -49,11 +49,17 @@ export function MainNavbar() {
   };
 
   const getInitials = (name: string) => name?.substring(0, 2).toUpperCase() || "U";
+  
   const hasAdminAccess = userData?.role && ['admin', 'super_admin', 'unit_admin'].includes(userData.role);
+  
+  // Logika Status Pengguna
+  const isPendingMember = userData?.role === 'member' && userData?.status === 'pending';
+  const isPendingUnit = userData?.role === 'customer' && userData?.status === 'pending';
+  const isRegularCustomer = userData?.role === 'customer' && userData?.status !== 'pending';
+  const isRegularMember = userData?.role === 'member' && userData?.status === 'active';
 
   return (
     <>
-      {/* HEADER ATAS (Desktop & Mobile Minimal) */}
       <header className={`sticky top-0 z-40 w-full transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-xl border-b border-zinc-200/50 shadow-sm' : 'bg-white/80 backdrop-blur-md border-b'}`}>
         <div className="w-full flex h-16 items-center justify-between px-4 md:px-8 lg:px-12">
           
@@ -67,7 +73,6 @@ export function MainNavbar() {
               </div>
             </Link>
             
-            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-zinc-600">
               <Link href="/marketplace" className={`hover:text-red-600 transition-colors ${pathname === '/marketplace' ? 'text-red-600' : ''}`}>Belanja</Link>
               <Link href="/about" className="hover:text-red-600 transition-colors">Tentang Kami</Link>
@@ -124,7 +129,6 @@ export function MainNavbar() {
               </DropdownMenu>
             )}
 
-            {/* Desktop Cart Button (Sembunyikan icon keranjang atas di Mobile karena sudah ada di Bottom Nav) */}
             <Button variant="ghost" size="icon" className="hidden md:flex relative hover:bg-red-50 hover:text-red-600 rounded-full" onClick={() => setIsCartOpen(true)}>
               <ShoppingCart className="w-5 h-5" />
               {totalCartItems > 0 && (
@@ -148,37 +152,105 @@ export function MainNavbar() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-60 mt-2 rounded-2xl shadow-xl" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal p-3">
+                <DropdownMenuContent className="w-64 mt-2 rounded-2xl shadow-xl p-2" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal p-2 pb-1">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-bold leading-none">{userData?.fullName}</p>
-                      <p className="text-xs leading-none text-zinc-500 mt-1">{userData?.email}</p>
-                      <span className="text-[10px] bg-red-50 text-red-700 px-2 py-1 rounded w-fit mt-2 capitalize font-bold border border-red-100">
+                      <p className="text-sm font-bold leading-none truncate">{userData?.fullName}</p>
+                      <p className="text-xs leading-none text-zinc-500 mt-1 truncate">{userData?.email}</p>
+                      <span className="text-[10px] bg-zinc-100 text-zinc-600 px-2 py-1 rounded w-fit mt-2 capitalize font-bold border border-zinc-200">
                         {userData?.role?.replace('_', ' ')}
                       </span>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                  
+                  {/* PENDAFTARAN MENGGUNAKAN QUERY PARAMETERS (?type=...) */}
+                  {isRegularCustomer && (
+                    <div className="px-1 py-2 flex flex-col gap-2">
+                      <div 
+                        onClick={() => router.push('/terms?type=member')} 
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-3 text-white shadow-md relative overflow-hidden group cursor-pointer"
+                      >
+                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
+                        <div className="relative z-10 flex flex-col gap-1">
+                          <span className="flex items-center gap-1.5 text-sm font-bold drop-shadow-sm">
+                            <Building2 className="w-4 h-4" /> Gabung Unit / Organisasi
+                          </span>
+                          <span className="text-[10px] text-blue-100 leading-tight">
+                            Pilih unit, nikmati fasilitas, dan buka tokomu sendiri!
+                          </span>
+                        </div>
+                      </div>
+
+                      <div 
+                        onClick={() => router.push('/terms?type=unit')} 
+                        className="border border-blue-200 bg-blue-50 rounded-xl p-2.5 text-blue-800 hover:bg-blue-100 transition-colors cursor-pointer flex flex-col gap-0.5"
+                      >
+                         <span className="flex items-center gap-1.5 text-xs font-bold">
+                            <PlusCircle className="w-3.5 h-3.5" /> Buat Unit / Organisasi Baru
+                         </span>
+                         <span className="text-[9px] text-blue-600 leading-tight pl-5">
+                            Daftarkan organisasi Anda ke sistem.
+                         </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {isPendingUnit && (
+                     <div className="px-1 py-2">
+                       <div onClick={() => router.push('/pending-unit')} className="border border-orange-200 bg-orange-50 rounded-xl p-2.5 text-orange-800 hover:bg-orange-100 transition-colors cursor-pointer flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1.5 text-xs font-bold">
+                             <Clock className="w-3.5 h-3.5" /> Status Pengajuan Unit
+                          </span>
+                          <span className="text-[9px] text-orange-600 leading-tight pl-5">
+                             Cek status pendaftaran organisasi Anda.
+                          </span>
+                       </div>
+                     </div>
+                  )}
+
+                  {isPendingMember && (
+                     <div className="px-1 py-2">
+                       <div onClick={() => router.push('/pending')} className="border border-orange-200 bg-orange-50 rounded-xl p-2.5 text-orange-800 hover:bg-orange-100 transition-colors cursor-pointer flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1.5 text-xs font-bold">
+                             <Clock className="w-3.5 h-3.5" /> Status Keanggotaan
+                          </span>
+                          <span className="text-[9px] text-orange-600 leading-tight pl-5">
+                             Lanjutkan proses aktivasi anggota Anda.
+                          </span>
+                       </div>
+                     </div>
+                  )}
+
+                  <DropdownMenuSeparator className="bg-zinc-100" />
+                  
+                  <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer py-2.5 rounded-lg m-1 font-medium">
+                    <User className="mr-3 h-4 w-4 text-zinc-500" /> Profil Saya
+                  </DropdownMenuItem>
+
                   <DropdownMenuItem onClick={() => router.push(userData?.role === 'customer' ? '/orders' : '/member/orders')} className="cursor-pointer py-2.5 rounded-lg m-1 font-medium">
                     <ShoppingBag className="mr-3 h-4 w-4 text-zinc-500" /> Pesanan Saya
                   </DropdownMenuItem>
-                  {userData?.role === 'member' && (
+                  
+                  {isRegularMember && (
                     <>
-                      <DropdownMenuItem onClick={() => router.push('/member')} className="cursor-pointer py-2.5 rounded-lg m-1">
+                      <DropdownMenuItem onClick={() => router.push('/member')} className="cursor-pointer py-2.5 rounded-lg m-1 font-medium">
                         <User className="mr-3 h-4 w-4 text-zinc-500" /> Area Member
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push('/member/shop')} className="cursor-pointer py-2.5 rounded-lg m-1">
+                      <DropdownMenuItem onClick={() => router.push('/member/shop')} className="cursor-pointer py-2.5 rounded-lg m-1 font-medium">
                         <Store className="mr-3 h-4 w-4 text-zinc-500" /> Toko Saya
                       </DropdownMenuItem>
                     </>
                   )}
+                  
                   {hasAdminAccess && (
-                    <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer py-2.5 rounded-lg m-1 bg-zinc-50 font-semibold">
-                      <LayoutDashboard className="mr-3 h-4 w-4 text-zinc-600" /> Dashboard Admin
+                    <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer py-2.5 rounded-lg m-1 bg-red-50 text-red-700 font-bold focus:bg-red-100 focus:text-red-800">
+                      <LayoutDashboard className="mr-3 h-4 w-4" /> Dashboard Admin
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer py-2.5 rounded-lg m-1">
+                  
+                  <DropdownMenuSeparator className="bg-zinc-100" />
+                  
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer py-2.5 rounded-lg m-1 font-medium">
                     <LogOut className="mr-3 h-4 w-4" /> Keluar
                   </DropdownMenuItem>
                 </DropdownMenuContent>

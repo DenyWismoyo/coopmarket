@@ -1,3 +1,4 @@
+// File: src/app/(auth)/pending/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -20,35 +21,35 @@ export default function PendingPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800">
-            Untuk mengaktifkan akun, silakan selesaikan langkah berikut:
+            Untuk mengaktifkan status keanggotaan Anda, silakan selesaikan langkah berikut:
           </div>
-
+          
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0">
                 <MapPin className="w-4 h-4 text-zinc-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-zinc-900">Kunjungi Kantor Unit / Organisasi</h4>
-                <p className="text-sm text-zinc-500">Datang ke Unit / Organisasi terdekat dengan membawa KTP asli.</p>
+                <h4 className="font-semibold text-zinc-900">Hubungi / Kunjungi Unit Terkait</h4>
+                <p className="text-sm text-zinc-500">Silakan hubungi pengurus atau datang ke sekretariat unit / organisasi yang Anda pilih untuk verifikasi identitas (KTP).</p>
               </div>
             </div>
-
+            
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0">
                 <Banknote className="w-4 h-4 text-zinc-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-zinc-900">Bayar Simpanan Pokok</h4>
+                <h4 className="font-semibold text-zinc-900">Selesaikan Administrasi</h4>
                 <p className="text-sm text-zinc-500">
-                  Lakukan pembayaran Iuran Wajib Keanggotaan sebesar <strong>Rp 100.000</strong> di kasir.
+                  Lakukan pembayaran administrasi atau iuran pendaftaran awal sesuai dengan kebijakan unit / organisasi Anda.
                 </p>
               </div>
             </div>
           </div>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <Link href="/login">
+          <Link href="/login" className="w-full">
             <Button variant="outline" className="w-full">
               Kembali ke Halaman Login
             </Button>

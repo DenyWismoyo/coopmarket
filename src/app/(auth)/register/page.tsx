@@ -9,7 +9,6 @@ import { cooperativeService } from "@/services/cooperative.service";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,11 +31,11 @@ export default function RegisterPage() {
   
   // Tentukan apakah ini mode "Upgrade" (Customer yang sedang login ingin jadi Member)
   const isUpgradeMode = userData?.role === 'customer';
-
+  
   const [loading, setLoading] = useState(false);
   const [cooperatives, setCooperatives] = useState<Cooperative[]>([]);
   const [loadingCoops, setLoadingCoops] = useState(true);
-
+  
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -55,7 +54,7 @@ export default function RegisterPage() {
         setCooperatives(coops);
       } catch (error) {
         console.error("Gagal memuat daftar Unit / Organisasi:", error);
-        toast.error("Gagal memuat daftar unit Unit / Organisasi");
+        toast.error("Gagal memuat daftar Unit / Organisasi");
       } finally {
         setLoadingCoops(false);
       }
@@ -87,14 +86,14 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+    
     try {
       // Validasi Universal
       if (formData.nik.length < 16) throw new Error("NIK harus 16 digit");
-      if (!formData.coopId) throw new Error("Silakan pilih Unit / Organisasi  tujuan");
-
+      if (!formData.coopId) throw new Error("Silakan pilih Unit / Organisasi tujuan");
+      
       const selectedCoop = cooperatives.find(c => c.id === formData.coopId);
-
+      
       if (isUpgradeMode && user) {
         // === LOGIKA UPGRADE CUSTOMER KE MEMBER ===
         const userRef = doc(db, "users", user.uid);
@@ -112,7 +111,6 @@ export default function RegisterPage() {
         
         toast.success("Pengajuan anggota berhasil dikirim!");
         router.push("/pending");
-
       } else {
         // === LOGIKA PENDAFTARAN BARU DARI AWAL ===
         await authService.register({
@@ -131,7 +129,7 @@ export default function RegisterPage() {
         toast.success("Pendaftaran berhasil!");
         router.push("/pending");
       }
-            
+      
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Gagal memproses pendaftaran");
@@ -157,14 +155,14 @@ export default function RegisterPage() {
           </CardTitle>
           <CardDescription>
             {isUpgradeMode 
-              ? "Lengkapi NIK dan pilih Unit / Organisasi untuk mengajukan keanggotaan Anda." 
-              : "Bergabunglah dengan Unit / Organisasi pilihan Anda."}
+               ? "Lengkapi NIK dan pilih Unit / Organisasi untuk mengajukan keanggotaan Anda." 
+               : "Bergabunglah dengan Unit / Organisasi pilihan Anda."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-                         
-            {/* Pilihan Unit Unit / Organisasi - PENTING */}
+            
+            {/* Pilihan Unit / Organisasi - PENTING */}
             <div className="space-y-2">
               <Label htmlFor="coopId">Pilih Unit / Organisasi <span className="text-red-500">*</span></Label>
               <Select onValueChange={handleCoopChange} disabled={loadingCoops}>
@@ -184,7 +182,7 @@ export default function RegisterPage() {
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-zinc-500">
-                Pilih unit Unit / Organisasi tempat Anda akan melakukan aktivasi dan pembayaran simpanan pokok.
+                Pilih Unit / Organisasi tempat Anda akan melakukan aktivasi dan pembayaran simpanan pokok.
               </p>
             </div>
 
@@ -270,8 +268,8 @@ export default function RegisterPage() {
             )}
 
             <Button 
-                 type="submit" 
-                 className={`w-full font-bold ${isUpgradeMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'} text-white`}
+                  type="submit" 
+                  className={`w-full font-bold ${isUpgradeMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'} text-white`} 
                  disabled={loading || loadingCoops}
             >
               {loading ? (

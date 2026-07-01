@@ -1,3 +1,4 @@
+// File: src/app/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -18,7 +19,6 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/4 w-[500px] h-[500px] bg-red-900/40 rounded-full blur-3xl pointer-events-none" />
         
         {/* GUNAKAN CLASS INI (Pastikan class .bg-grid-pattern sudah ada di globals.css) */}
-        {/* Jangan tinggalkan kode lama yang dikomentari di sini! */}
         <div className="absolute inset-0 bg-center opacity-10 bg-grid-pattern" />
 
         <div className="container px-4 mx-auto relative z-10 w-full">
@@ -28,7 +28,7 @@ export default function LandingPage() {
             <div className="flex-1 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/30 border border-red-400/30 text-red-50 text-xs font-semibold uppercase tracking-wider mb-6 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                Revolusi koperasi / komunitas industri Kreatif Indonesia
+                Revolusi Unit / Organisasi Industri Kreatif Indonesia
               </div>
               
               <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-100">
@@ -37,7 +37,7 @@ export default function LandingPage() {
               </h1>
               
               <p className="text-lg lg:text-xl text-red-50/90 mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
-                Membangun ekosistem koperasi / komunitas industri kreatif masa depan yang modern, transparan, dan inklusif. Kami menghadirkan teknologi untuk memberdayakan potensi lokal, memperluas akses pasar, dan menciptakan kesejahteraan bersama yang berkelanjutan.
+                Membangun ekosistem unit / organisasi industri kreatif masa depan yang modern, transparan, dan inklusif. Kami menghadirkan teknologi untuk memberdayakan potensi lokal, memperluas akses pasar, dan menciptakan kesejahteraan bersama yang berkelanjutan.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-in fade-in slide-in-from-bottom-7 duration-1000 delay-300">
@@ -65,7 +65,7 @@ export default function LandingPage() {
                    <div className="relative w-full h-full p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl">
                       <Image 
                           src="/icon.png" 
-                          alt="Ilustrasi Koperasi Digital" 
+                          alt="Ilustrasi Unit / Organisasi Digital" 
                           fill
                           className="object-contain p-4"
                           priority
